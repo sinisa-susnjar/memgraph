@@ -11,6 +11,7 @@
 #include <climits>
 #include <unordered_map>
 #include <memory>
+#include <typeinfo>
 
 #include "utils/assert.hpp"
 
@@ -39,42 +40,61 @@ public:
     return GetNamedElement(variables_, name);
   }
 
-  const auto &Variables() const { return variables_; }
+  const auto &variables() const { return variables_; }
 
   auto GetPropertyIndex(const std::string &name) {
     return GetNamedElement(properties_, name);
   }
 
-  const auto &Properties() const { return properties_; }
+  const auto &properties() const { return properties_; }
 
   auto GetLabelIndex(const std::string &name) {
     return GetNamedElement(labels_, name);
   }
 
-  const auto &Labels() const { return labels_; }
+  const auto &labels() const { return labels_; }
 
   auto GetEdgeTypeIndex(const std::string &name) {
     return GetNamedElement(edge_types_, name);
   }
 
-  const auto &EdgeTypes() const { return edge_types_; }
+  const auto &edge_types() const { return edge_types_; }
 
 
   /**
    * Following are the expression data structures.
    */
+
   enum class ExpressionOperand {
-    Variable,
-    Expression,
-    Property,
-    Label,
-    EdgeType
+    VARIABLE,
+    EXPRESSION,
+    PROPERTY,
+    LABEL,
+    EDGE_TYPE
     // TODO add all possible expression operands
   };
 
   enum class ExpressionOp {
-    Addition,
-    Subtraction
+    LOGICAL_OR,
+    LOGICAL_XOR,
+    LOGICAL_AND,
+    LOGICAL_NOT,
+    EQ,
+    NE,
+    LT,
+    GT,
+    LE,
+    GE,
+    ADDITION,
+    SUBTRACTION,
+    MULTIPLICATION,
+    DIVISION,
+    MODULO,
+    UNARY_MINUS,
+    UNARY_PLUS,
+    PROPERTY_GETTER,
+    LITERAL,
+    PARAMETER
     // TODO add all expression ops
   };
 
@@ -98,7 +118,7 @@ public:
     return expressions_.size() - 1;
   }
 
-  auto &Expressions() { return expressions_; }
+  auto &expressions() { return expressions_; }
 
 
   /**
@@ -145,7 +165,8 @@ public:
     return patterns_.size() - 1;
   }
 
-  const auto &Patterns() { return patterns_; }
+  auto &patterns() { return patterns_; }
+  const auto &patterns() const { return patterns_; }
 
 
   /**
@@ -156,21 +177,39 @@ public:
    public:
 
      enum class Type {
-       Match,
-       Merge,
-       Create,
-       Return
+       MATCH,
+       UNWIND,
+       MERGE,
+       CREATE,
+       SET,
+       DELETE,
+       REMOVE,
+       WITH,
+       RETURN
        // TODO add all other ones
      };
 
      const Type type_;
 
      Clause(Type type) : type_(type) {}
+     virtual ~Clause() {}
 
+     /**
+      * Returns a reference to this Clause, cast to the desired
+      * derived type. Throws std::bad_cast if the conversion is
+      * not allowed.
+      *
+      * @tparam TDerived The type to return.
+      * @return A reference to this, cast to TDerived
+      */
      template <typename TDerived>
-     TDerived *As() {
-       // TODO change to dynamic_cast once Clause is polymorphic
-       return static_cast<TDerived*>(this);
+     TDerived &As() {
+       auto *r_val = dynamic_cast<TDerived*>(this);
+       if (r_val == nullptr)
+         // TODO consider a specialized exception here
+         throw std::bad_cast();
+
+       return *r_val;
      }
    };
 
@@ -178,7 +217,8 @@ public:
    * Returns all the clauses that can then be dynamically
    * cast to their exact type (which is known from clause.type_
    */
-  const auto &Clauses() { return clauses_; }
+  auto &clauses() { return clauses_; }
+  const auto &clauses() const { return clauses_; }
 
   class Match : public Clause {
   public:
@@ -187,12 +227,12 @@ public:
     // indices of patterns in this match
     vector<int32_t> patterns_;
 
-    Match() : Clause(Type::Match) {}
+    Match() : Clause(Type::MATCH) {}
   };
 
-  /** Adds a match clause and returns it's index in the clauses vector */
+  /** Adds a match clause and turns it's index in the clauses vector */
   auto AddMatch() {
-    clauses_.emplace_back(std::make_shared<Match>(Match()));
+    clauses_.emplace_back(std::make_unique<Match>(Match()));
     return clauses_.size() - 1;
   }
 
@@ -204,7 +244,7 @@ public:
     // where variable is -1 if there is no AS
     vector<std::pair<int32_t, int32_t>> expressions_;
 
-    Return(bool return_all) : Clause(Type::Return),
+    Return(bool return_all) : Clause(Type::RETURN),
                               return_all_(return_all) {}
   };
 
@@ -214,7 +254,6 @@ public:
     return clauses_.size() - 1;
   }
 
-
 private:
   vector<std::string> variables_;
   vector<std::string> properties_;
@@ -222,7 +261,7 @@ private:
   vector<std::string> edge_types_;
   vector<Expression> expressions_;
   vector<Pattern> patterns_;
-  vector<std::shared_ptr<Clause>> clauses_;
+  vector<std::unique_ptr<Clause>> clauses_;
 
   /**
    * Helper function for getting a named element.

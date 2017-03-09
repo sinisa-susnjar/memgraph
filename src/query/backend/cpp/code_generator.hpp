@@ -2,14 +2,34 @@
 
 #include <string>
 #include <vector>
-#include "query/frontend/opencypher/generated/CypherBaseVisitor.h"
-#include "antlr4-runtime.h"
 
-using antlropencypher::CypherParser;
+#include "database/graph_db_accessor.hpp"
+#include "query/backend/data_structures.hpp"
+
+namespace query {
+
 
 class CodeGenerator {
-  void GenerateExpresssion();
+public:
 
- private:
+  CodeGenerator(const DataStructures &data_structures) :
+  data_structures_(data_structures) {
+    Generate();
+  }
+
+  const std::string &code() {
+    return code_;
+  }
+
+private:
+  const DataStructures &data_structures_;
   std::string code_;
+
+  void Generate();
+  void GenerateNamedStuff();
+  void GenerateTraversal();
+  void GeneratePatternTraversal(const DataStructures::Pattern &pattern,
+                                int variable_index);
 };
+}
+
