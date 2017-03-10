@@ -12,10 +12,12 @@
 #include <unordered_map>
 #include <memory>
 #include <typeinfo>
+#include <utility>
 
 #include "utils/assert.hpp"
 
 using std::vector;
+using std::make_pair;
 
 
 /**
@@ -106,18 +108,20 @@ public:
    */
   struct Expression {
     const ExpressionOp op_;
-    vector<std::pair<ExpressionOperand, size_t>> operands_;
+    vector<std::pair<ExpressionOperand, int>> operands_;
   };
 
   /**
    * @param op Expression operation.
-   * @return  Index of the added expression.
+   * @return  pair<int, Expression &> that is (index, expression)
    */
   auto AddExpression(ExpressionOp op) {
     expressions_.emplace_back(Expression{op});
-    return expressions_.size() - 1;
+    return make_pair(expressions_.size() - 1,
+                     expressions_.back());
   }
 
+  const auto &expressions() const { return expressions_; }
   auto &expressions() { return expressions_; }
 
 
@@ -126,48 +130,46 @@ public:
    */
   struct Node {
     // node name, -1 if the node is not named
-    int32_t variable_{-1};
-    vector<int32_t> labels_;
+    int variable_{-1};
+    vector<int> labels_;
     // pairs of (property_index, expression_index)
-    vector<std::pair<int32_t, int32_t>> properties_;
+    vector<std::pair<int, int>> properties_;
   };
 
   struct Relationship {
     // relationship name, -1 if not named
-    int32_t variable_{-1};
+    int variable_{-1};
     enum Direction { LEFT, RIGHT, BOTH };
     Direction direction = Direction::BOTH;
-    vector<int32_t> types_;
+    vector<int> types_;
     // pairs of (property_index, expression_index)
-    vector<std::pair<int32_t, int32_t>> properties_;
+    vector<std::pair<int, int>> properties_;
 
     bool has_range_= false;
-    int64_t lower_bound = 1LL;
-    int64_t upper_bound = LLONG_MAX;
+    long long lower_bound = 1LL;
+    long long upper_bound = LLONG_MAX;
   };
 
-  // TODO: Flor prefers this is called Pattern because it's a single
-  // pattern, and a collection of patterns should be Patterns or so
   struct Pattern {
-    int32_t variable_{-1};
+    int variable_{-1};
     vector<Node> nodes_;
     vector<Relationship> relationships_;
   };
 
   /**
    * @param start_node Starting node of the pattern.
-   * @return Index of the newly created pattern.
+   * @return pair<int, Pattern &> that is (index, new pattern)
    */
-  // TODO should we std::move start_node into the vector?
   auto AddPattern(const Node &start_node) {
     patterns_.emplace_back();
-    patterns_.back().nodes_.emplace_back(start_node);
-    return patterns_.size() - 1;
+    auto added_pattern = patterns_.back();
+    added_pattern.nodes_.emplace_back(start_node);
+    return make_pair(patterns_.size() - 1,
+                     added_pattern);
   }
 
   auto &patterns() { return patterns_; }
   const auto &patterns() const { return patterns_; }
-
 
   /**
    * Following is a type hierarchy for clauses. All
@@ -223,17 +225,21 @@ public:
   class Match : public Clause {
   public:
     // optional WHERE expression
-    int32_t expression_{-1};
+    int expression_{-1};
     // indices of patterns in this match
-    vector<int32_t> patterns_;
+    vector<int> patterns_;
 
     Match() : Clause(Type::MATCH) {}
   };
 
-  /** Adds a match clause and turns it's index in the clauses vector */
+  /**
+   * Creates and adds a new Match clause and returns it's
+   * index and a ref to it
+   */
   auto AddMatch() {
     clauses_.emplace_back(std::make_unique<Match>(Match()));
-    return clauses_.size() - 1;
+    return make_pair(clauses_.size() - 1,
+                     clauses_.back()->As<Match>());
   }
 
   class Return : public Clause {
@@ -242,16 +248,20 @@ public:
     bool return_all_;
     // vector of pairs (expression, variable)
     // where variable is -1 if there is no AS
-    vector<std::pair<int32_t, int32_t>> expressions_;
+    vector<std::pair<int, int>> expressions_;
 
     Return(bool return_all) : Clause(Type::RETURN),
                               return_all_(return_all) {}
   };
 
-  /** Adds a return clause and returns it's index in the clauses vector */
+  /**
+   * Creates and adds a new Return clause and returns it's
+   * index and a ref to it
+   */
   auto AddReturn(bool return_all) {
     clauses_.emplace_back(std::make_unique<Return>(Return(return_all)));
-    return clauses_.size() - 1;
+    return make_pair(clauses_.size() - 1,
+                     clauses_.back()->As<Return>());
   }
 
 private:
@@ -271,7 +281,7 @@ private:
    * @return  Index of the NamedElement with the given name
    *    (found existing or added new).
    */
-  int32_t GetNamedElement(vector<std::string> &collection,
+  int GetNamedElement(vector<std::string> &collection,
                           const std::string &name) {
 
     for (int i = 0; i < collection.size(); ++i)

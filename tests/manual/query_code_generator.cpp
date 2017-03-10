@@ -30,14 +30,14 @@ DataStructures basic_traversal() {
   DataStructures ds;
 
   // create a pattern
-  auto pattern_ind = ds.AddPattern(DataStructures::Node());
-  auto &pattern = ds.patterns()[pattern_ind];
-  pattern.nodes_.emplace_back(DataStructures::Node());
-  pattern.relationships_.emplace_back(DataStructures::Relationship());
+  DataStructures::Node start_node;
+  start_node.variable_ = ds.GetVariableIndex("n");
+  auto pattern = ds.AddPattern(start_node);
+  pattern.second.nodes_.emplace_back(DataStructures::Node());
+  pattern.second.relationships_.emplace_back(DataStructures::Relationship());
 
-  auto match_ind = ds.AddMatch();
-  auto &match = ds.clauses()[match_ind]->As<DataStructures::Match>();
-  match.patterns_.emplace_back(pattern_ind);
+  auto match = ds.AddMatch();
+  match.second.patterns_.emplace_back(pattern.first);
 
   return ds;
 }

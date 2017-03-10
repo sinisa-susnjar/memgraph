@@ -57,15 +57,14 @@ TEST(QueryDataStructures, EdgeTypes) {
 TEST(QueryDataStructures, Expression) {
   DataStructures ds;
 
-  auto expr1_ind = ds.AddExpression(DataStructures::ExpressionOp::ADDITION);
-  auto &expr1 = ds.expressions()[expr1_ind];
-  EXPECT_EQ(expr1.op_, DataStructures::ExpressionOp::ADDITION);
+  auto expr1 = ds.AddExpression(DataStructures::ExpressionOp::ADDITION);
+  EXPECT_EQ(expr1.second.op_, DataStructures::ExpressionOp::ADDITION);
   EXPECT_EQ(ds.expressions().size(), 1);
 
-  auto &expr2 = ds.expressions()[ds.AddExpression(DataStructures::ExpressionOp::SUBTRACTION)];
-  expr2.operands_.emplace_back(DataStructures::ExpressionOperand ::EXPRESSION, 42);
-  EXPECT_EQ(expr2.operands_[0].first, DataStructures::ExpressionOperand::EXPRESSION);
-  EXPECT_EQ(expr2.operands_[0].second, 42);
+  auto expr2 = ds.AddExpression(DataStructures::ExpressionOp::SUBTRACTION);
+  expr2.second.operands_.emplace_back(DataStructures::ExpressionOperand ::EXPRESSION, 42);
+  EXPECT_EQ(expr2.second.operands_[0].first, DataStructures::ExpressionOperand::EXPRESSION);
+  EXPECT_EQ(expr2.second.operands_[0].second, 42);
 }
 
 TEST(QueryDataStructures, Pattern) {
@@ -81,7 +80,7 @@ TEST(QueryDataStructures, MatchClause) {
   DataStructures ds;
 
   EXPECT_EQ(ds.clauses().size(), 0);
-  auto clause_ind = ds.AddMatch();
+  auto match = ds.AddMatch();
   EXPECT_EQ(ds.clauses().size(), 1);
-  EXPECT_EQ(-1, ds.clauses()[clause_ind]->As<DataStructures::Match>().expression_);
+  EXPECT_EQ(-1, match.second.expression_);
 }

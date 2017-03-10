@@ -37,24 +37,52 @@ const std::string kPropVarPrefix = "property_";
 const std::string kLabelVarPrefix = "label_";
 const std::string kEdgeTypeVarPrefix = "edge_type_";
 
+// TODO differentiate between nodes and edges?
+const std::string kQueryVariableVarPrefix = "query_var_";
+
 // prefixes for traversal variables
 const std::string kTraversalVarPrefix = "traversal_";
 const std::string kCartesianPrefix = "cartesian_";
+
+using namespace query;
+
+/*
+ * Helper functions for emitting code.
+ */
+
+CodeGenerator &CodeGenerator::NL() {
+  code_ += "\n";
+  return *this;
+}
+
+CodeGenerator &CodeGenerator::Tab() {
+  code_ += "\t";
+  return *this;
+}
+
+CodeGenerator &CodeGenerator::Comm(const std::string &comment) {
+  code_ += "// ";
+  code_ += comment;
+  return *this;
+}
 
 
 void query::CodeGenerator::Generate() {
   code_.clear();
   GenerateNamedStuff();
   GenerateTraversal();
+  GenerateReturn();
 }
 
 void query::CodeGenerator::GenerateTraversal() {
   // make a traversal for every pattern in every match
   // TODO support patterns elsewhere
 
-  code_ += "\n// traversal\n";
+//  code_ += "\n// traversal\n";
+  NL().Comm("traversal").NL();
 
   int current_traversal = 0;
+  // TODO make a helper function for iterating over MATCH clauses and such
   for (auto &clause_ptr : data_structures_.clauses()) {
     if (clause_ptr->type_ == DataStructures::Clause::Type::MATCH) {
       DataStructures::Match &match = clause_ptr->As<DataStructures::Match>();
@@ -66,19 +94,21 @@ void query::CodeGenerator::GenerateTraversal() {
   }
 
   // generate the final cartesian for all the traversals
-  code_ += "\n// cartesian of all the traversals\n";
+//  code_ += "\n// cartesian of all the traversals\n";
+  NL().Comm("cartesian of all the traversals").NL();
   code_ += "auto " + kCartesianPrefix + "0 = Cartesian(";
   for (int i = 0; i < current_traversal; ++i) {
     if(i > 0) code_ += ", ";
     code_ += kTraversalVarPrefix + std::to_string(i);
   }
+  code_ += ");\n";
 
 }
 
 void query::CodeGenerator::GeneratePatternTraversal(
     const DataStructures::Pattern &pattern, const int variable_index) {
 
-  code_ += kTraversalVarPrefix + std::to_string(variable_index);
+  code_ += "auto " + kTraversalVarPrefix + std::to_string(variable_index);
   code_ += " = ";
 
   // TODO currently we start traversal only from the whole vertex set
@@ -139,3 +169,50 @@ void query::CodeGenerator::GenerateNamedStuff() {
     add_named(kEdgeTypeVarPrefix, data_structures_.edge_types(), "edge_type");
 }
 
+void query::CodeGenerator::GenerateReturn() {
+  // TODO for now only MATCH ... RETURN is supported
+  code_ += "\n// return statement\n";
+
+  // generate the basic visitor structure
+  code_ += kCartesianPrefix + "0.Visit([](Paths &p) {\n";
+
+  // TODO generate all the variables
+  int path_counter = 0;
+  code_ += "\t// variables defined in the query\n";
+  for (auto &clause_ptr : data_structures_.clauses()) {
+    if (clause_ptr->type_ == DataStructures::Clause::Type::MATCH) {
+      DataStructures::Match &match = clause_ptr->As<DataStructures::Match>();
+      for (auto pattern_ind : match.patterns_) {
+        auto &pattern = data_structures_.patterns()[pattern_ind];
+
+        auto first_node_var = pattern.nodes_[0].variable_;
+        if (first_node_var != -1) {
+          code_ += "\tauto ";
+          code_ += kQueryVariableVarPrefix + std::to_string(first_node_var);
+          code_ += " = p[" + std::to_string(path_counter) + "]";
+          code_ += ".Vertices()[0];";
+          code_ += "\t// " + data_structures_.variables()[first_node_var];
+          code_ += "\n";
+        }
+
+        for (int relationship_ind = 0; relationship_ind < pattern.relationships_.size(); ++relationship_ind) {
+          // TODO
+        }
+
+        // we're done with a pattern, so we're done with a yielded path
+        path_counter++;
+      }
+    }
+  }
+  // TODO generate all the expressions
+
+  // TODO return streams out
+  // TODO return_all
+  for (auto &clause_ptr : data_structures_.clauses()) {
+    if (clause_ptr->type_ == DataStructures::Clause::Type::RETURN) {
+      DataStructures::Return &match = clause_ptr->As<DataStructures::Return>();
+    }}
+
+
+  code_ += "};";
+};
