@@ -40,12 +40,8 @@ private:
   /** Adds a number of tabs to the generated code and returns */
   CodeGenerator &Tab(int tabs=1);
 
-  /** Starts a single line comment */
-  CodeGenerator &Comm();
-
   /** Starts a single line comment and emits the given string. */
-  CodeGenerator &Comm(const std::string &comment);
-
+  CodeGenerator &Comm(const std::string &comment="");
 
   /** Emits a string */
   CodeGenerator &Emit(const std::string &s);

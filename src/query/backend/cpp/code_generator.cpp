@@ -34,6 +34,9 @@ const std::string kDbAccessorVar = "db_accessor";
 const std::string kParamsVar = "params";
 const std::string kStreamVar = "stream";
 
+// names of other unique variables
+const std::string kSummaryVar = "summary";
+
 // prefixes for generated variable names
 const std::string kPropVarPrefix = "property_";
 const std::string kLabelVarPrefix = "label_";
@@ -76,18 +79,13 @@ CodeGenerator &CodeGenerator::NL(const std::string &s) {
 }
 
 CodeGenerator &CodeGenerator::Tab(int tabs) {
-  for (int i = 0; i < tabs; ++i)
-    code_ += "\t";
-  return *this;
-}
-
-CodeGenerator &CodeGenerator::Comm() {
-  code_ += "// ";
+  code_.append((unsigned long)tabs, '\t');
   return *this;
 }
 
 CodeGenerator &CodeGenerator::Comm(const std::string &comment) {
-  return Comm().Emit(comment);
+  code_ += "// " + comment;
+  return *this;
 }
 
 CodeGenerator &CodeGenerator::Emit(const std::string &s) {
@@ -283,7 +281,7 @@ void query::CodeGenerator::GenerateReturn() {
 
   // headers
   NL().Comm("headers");
-  NL().Emit(kStreamVar, ".Header(std::vector{");
+  NL().Emit(kStreamVar, ".Header(std::vector<std::string>{");
   for (auto &ret : data_structures_.Returns()) {
     for (const auto &return_element : ret.get().expressions_)
     NL().Tab().Fmt("\"{}\"", std::get<1>(return_element));
@@ -336,8 +334,10 @@ void query::CodeGenerator::GenerateReturn() {
       NL().Tab(2).Fmt("{}{},", kExpressionVarPrefix, std::get<0>(expression));
     NL().Tab().Emit("});").NL();
 
-    // TODO write out meta
-    NL().Comm("TODO write out metdata").NL();
+    NL().Comm("summary");
+    NL().Fmt("std::map<std::string, TypedValue> {};", kSummaryVar);
+    NL().Fmt("{}.emplace(\"type\", TypedValue(\"r\"));", kSummaryVar);
+    NL().Fmt("{}.Header({});", kStreamVar, kSummaryVar).NL();
   }
 
   Emit("};");
