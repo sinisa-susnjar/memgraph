@@ -10,6 +10,9 @@
 #include "query/backend/data_structures.hpp"
 
 
+using namespace query;
+
+
 TEST(QueryDataStructures, Variables) {
   DataStructures ds;
 
@@ -82,5 +85,5 @@ TEST(QueryDataStructures, MatchClause) {
   EXPECT_EQ(ds.clauses().size(), 0);
   auto match = ds.AddMatch();
   EXPECT_EQ(ds.clauses().size(), 1);
-  EXPECT_EQ(-1, match.second.expression_);
+  EXPECT_EQ(-1, match.second.where_expression_);
 }
