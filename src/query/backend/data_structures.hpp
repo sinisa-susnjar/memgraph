@@ -13,6 +13,7 @@
 #include <memory>
 #include <typeinfo>
 #include <utility>
+#include <functional>
 
 #include "utils/assert.hpp"
 
@@ -118,7 +119,7 @@ public:
   auto AddExpression(ExpressionOp op) {
     expressions_.emplace_back(Expression{op});
     return make_pair(expressions_.size() - 1,
-                     expressions_.back());
+                     std::ref(expressions_.back()));
   }
 
   const auto &expressions() const { return expressions_; }
@@ -162,10 +163,9 @@ public:
    */
   auto AddPattern(const Node &start_node) {
     patterns_.emplace_back();
-    auto added_pattern = patterns_.back();
+    auto &added_pattern = patterns_.back();
     added_pattern.nodes_.emplace_back(start_node);
-    return make_pair(patterns_.size() - 1,
-                     added_pattern);
+    return make_pair((int)patterns_.size() - 1, std::ref(added_pattern));
   }
 
   auto &patterns() { return patterns_; }
@@ -239,7 +239,7 @@ public:
   auto AddMatch() {
     clauses_.emplace_back(std::make_unique<Match>(Match()));
     return make_pair(clauses_.size() - 1,
-                     clauses_.back()->As<Match>());
+                     std::ref(clauses_.back()->As<Match>()));
   }
 
   class Return : public Clause {
@@ -261,7 +261,7 @@ public:
   auto AddReturn(bool return_all) {
     clauses_.emplace_back(std::make_unique<Return>(Return(return_all)));
     return make_pair(clauses_.size() - 1,
-                     clauses_.back()->As<Return>());
+                     std::ref(clauses_.back()->As<Return>()));
   }
 
 private:

@@ -55,6 +55,11 @@ CodeGenerator &CodeGenerator::NL() {
   return *this;
 }
 
+CodeGenerator &CodeGenerator::NL(const std::string &s) {
+  code_ += s;
+  return NL();
+}
+
 CodeGenerator &CodeGenerator::Tab() {
   code_ += "\t";
   return *this;
@@ -66,6 +71,14 @@ CodeGenerator &CodeGenerator::Comm(const std::string &comment) {
   return *this;
 }
 
+CodeGenerator &CodeGenerator::Emit(const std::string &s) {
+  code_ += s;
+  return *this;
+}
+
+CodeGenerator &CodeGenerator::Emit(const char *s) {
+  return Emit(std::string(s));
+}
 
 void query::CodeGenerator::Generate() {
   code_.clear();
@@ -96,13 +109,15 @@ void query::CodeGenerator::GenerateTraversal() {
   // generate the final cartesian for all the traversals
 //  code_ += "\n// cartesian of all the traversals\n";
   NL().Comm("cartesian of all the traversals").NL();
-  code_ += "auto " + kCartesianPrefix + "0 = Cartesian(";
+//  Emit("auto ", kCartesianPrefix, 0, " = Cartesian(");
+  Fmt("auto {}0 = Cartesian(", kCartesianPrefix);
+//  code_ += "auto " + kCartesianPrefix + "0 = Cartesian(";
   for (int i = 0; i < current_traversal; ++i) {
-    if(i > 0) code_ += ", ";
-    code_ += kTraversalVarPrefix + std::to_string(i);
+    if(i > 0) Emit(", ");
+    Emit(kTraversalVarPrefix, i);
   }
-  code_ += ");\n";
-
+  NL(");");
+//  code_ += ");\n";
 }
 
 void query::CodeGenerator::GeneratePatternTraversal(
