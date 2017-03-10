@@ -95,6 +95,7 @@ public:
     MODULO,
     UNARY_MINUS,
     UNARY_PLUS,
+    VARIABLE,   // turns a variable into an expression
     PROPERTY_GETTER,
     LITERAL,
     PARAMETER
@@ -129,19 +130,23 @@ public:
   /**
    * The following functions are for pattern matching.
    */
-  struct Node {
+  class Node {
+  public:
     // node name, -1 if the node is not named
     int variable_{-1};
     vector<int> labels_;
     // pairs of (property_index, expression_index)
     vector<std::pair<int, int>> properties_;
+
+    Node(int variable=-1) : variable_(variable) {}
   };
 
-  struct Relationship {
+  class Relationship {
+  public:
+    enum Direction { LEFT, RIGHT, BOTH };
+    Direction direction_;
     // relationship name, -1 if not named
     int variable_{-1};
-    enum Direction { LEFT, RIGHT, BOTH };
-    Direction direction = Direction::BOTH;
     vector<int> types_;
     // pairs of (property_index, expression_index)
     vector<std::pair<int, int>> properties_;
@@ -149,6 +154,9 @@ public:
     bool has_range_= false;
     long long lower_bound = 1LL;
     long long upper_bound = LLONG_MAX;
+
+    Relationship(Direction direction, int variable=-1) :
+        direction_(direction), variable_(variable) {}
   };
 
   struct Pattern {
@@ -263,6 +271,20 @@ public:
     return make_pair(clauses_.size() - 1,
                      std::ref(clauses_.back()->As<Return>()));
   }
+
+  /** Convenience functions for getting clauses of a specific type */
+  template <typename TDerived>
+  const auto clauses(Clause::Type type) const {
+    vector<std::reference_wrapper<TDerived>> r_val;
+    for (auto &clause_ptr : clauses())
+      if (clause_ptr->type_ == type)
+        r_val.push_back(std::ref(clause_ptr->As<TDerived>()));
+
+    return r_val;
+  }
+
+  const auto matches() const { return clauses<Match>(Clause::Type::MATCH); }
+  const auto returns() const { return clauses<Return>(Clause::Type::RETURN); }
 
 private:
   vector<std::string> variables_;

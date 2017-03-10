@@ -37,17 +37,13 @@ private:
   /** Emits the given string and a newline */
   CodeGenerator &NL(const std::string &s);
 
-  /**
-   * Adds a tab to the generated code and returns
-   * a reference to this.
-   */
-  CodeGenerator &Tab();
+  /** Adds a number of tabs to the generated code and returns */
+  CodeGenerator &Tab(int tabs=1);
 
+  /** Starts a single line comment */
+  CodeGenerator &Comm();
 
-  /**
-   * Adds a comment to the generated code and returns
-   * a reference to this.
-   */
+  /** Starts a single line comment and emits the given string. */
   CodeGenerator &Comm(const std::string &comment);
 
 
@@ -69,7 +65,7 @@ private:
 
   /** Formats and emits a string */
   template <typename ... TArgs>
-  CodeGenerator Fmt(const std::string &format, const TArgs ... args) {
+  CodeGenerator &Fmt(const std::string &format, const TArgs ... args) {
     code_ += fmt::format(format, args...);
     return *this;
   }
@@ -82,8 +78,9 @@ private:
   void Generate();
   void GenerateNamedStuff();
   void GenerateTraversal();
-  void GeneratePatternTraversal(const DataStructures::Pattern &pattern,
-                                int variable_index);
+  bool GenerateVertexFilter(int pattern_ind, int node_ind, const DataStructures::Node &node);
+  void GeneratePatternTraversal(int pattern_index);
+  void GenerateExpressions();
   void GenerateReturn();
 };
 }
