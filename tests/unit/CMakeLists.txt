@@ -19,8 +19,8 @@ foreach(test_cpp ${test_type_cpps})
     # build exec file
     add_executable(${target_name} ${test_cpp})
     set_property(TARGET ${target_name} PROPERTY CXX_STANDARD ${cxx_standard})
-    set_target_properties(${target_name} PROPERTIES COMPILE_FLAGS "-g -O0 -Wall --coverage -fprofile-arcs -ftest-coverage")
-    set_target_properties(${target_name} PROPERTIES LINK_FLAGS "--coverage -fprofile-arcs -ftest-coverage")
+    set_target_properties(${target_name} PROPERTIES COMPILE_FLAGS "-g -O0 -Wall")
+#    set_target_properties(${target_name} PROPERTIES LINK_FLAGS "--coverage -fprofile-arcs -ftest-coverage")
 
     # OUTPUT_NAME sets the real name of a target when it is built and can be
     # used to help create two targets of the same name even though CMake

@@ -2,14 +2,84 @@
 
 #include <string>
 #include <vector>
-#include "query/frontend/opencypher/generated/CypherBaseVisitor.h"
-#include "antlr4-runtime.h"
+#include <fmt/format.h>
 
-using antlropencypher::CypherParser;
+#include "database/graph_db_accessor.hpp"
+#include "query/backend/data_structures.hpp"
+
+namespace query {
+
 
 class CodeGenerator {
-  void GenerateExpresssion();
+public:
 
- private:
+  CodeGenerator(const DataStructures &data_structures) :
+  data_structures_(data_structures) {
+    Generate();
+  }
+
+  const std::string &code() {
+    return code_;
+  }
+
+private:
+  const DataStructures &data_structures_;
   std::string code_;
+
+  /*
+   * Helper functions for emitting code. All of them
+   * emit some code and return a reference to this,
+   * for chaining.
+   */
+
+  /** Emits a newline. */
+  CodeGenerator &NL();
+  /** Emits the given string and a newline */
+  CodeGenerator &NL(const std::string &s);
+
+  /** Adds a number of tabs to the generated code and returns */
+  CodeGenerator &Tab(int tabs=1);
+
+  /** Starts a single line comment and emits the given string. */
+  CodeGenerator &Comm(const std::string &comment="");
+
+  /** Emits a string */
+  CodeGenerator &Emit(const std::string &s);
+
+  /** Emits a string */
+  CodeGenerator &Emit(const char *s);
+
+  /** Emits a number convertible with std::to_string */
+  template <typename TArg>
+  CodeGenerator &Emit(const TArg num) { return Emit(std::to_string(num)); }
+
+  /** Emits all the given arguments. */
+  template <typename TFirst, typename ... TOthers>
+  CodeGenerator &Emit(const TFirst &first, const TOthers &... others) {
+    return Emit(first).Emit(others ...);
+  };
+
+  /** Formats and emits a string */
+  template <typename ... TArgs>
+  CodeGenerator &Fmt(const std::string &format, const TArgs ... args) {
+    code_ += fmt::format(format, args...);
+    return *this;
+  }
+
+  /*
+   * Functions that convert the data structures
+   * into emitted code.
+   */
+
+  void Generate();
+  void GenerateNamedStuff();
+  void GenerateTraversal();
+  bool GenerateVertexFilter(int pattern_ind, int node_ind, const DataStructures::Node &node);
+  bool GenerateRelationshipFilter(
+      int pattern_ind, int relationship_ind, const DataStructures::Relationship &relationship);
+  void GeneratePatternTraversal(int pattern_index);
+  void GenerateExpressions();
+  void GenerateReturn();
 };
+}
+
