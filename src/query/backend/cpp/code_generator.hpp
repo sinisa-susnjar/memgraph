@@ -79,6 +79,8 @@ private:
   void GenerateNamedStuff();
   void GenerateTraversal();
   bool GenerateVertexFilter(int pattern_ind, int node_ind, const DataStructures::Node &node);
+  bool GenerateRelationshipFilter(
+      int pattern_ind, int relationship_ind, const DataStructures::Relationship &relationship);
   void GeneratePatternTraversal(int pattern_index);
   void GenerateExpressions();
   void GenerateReturn();

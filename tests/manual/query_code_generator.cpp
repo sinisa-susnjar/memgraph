@@ -11,6 +11,8 @@
 using std::cout;
 using std::endl;
 
+using namespace query;
+
 DataStructures basic_data_structures() {
   DataStructures ds;
 
@@ -29,24 +31,22 @@ DataStructures basic_data_structures() {
 DataStructures basic_traversal() {
   DataStructures ds;
 
-  // query: MATCH (p:Cute:Person)-[:Likes]-(q:Cute:Person) RETURN p.name, q.name;
+  // query: MATCH (p:Person)-[:Likes]-(q:Cute:Person) RETURN p.name, q.name;
 
   // create a pattern
   DataStructures::Node start_node(ds.GetVariableIndex("p"));
-  start_node.labels_.emplace_back(ds.GetLabelIndex("Cute"));
   start_node.labels_.emplace_back(ds.GetLabelIndex("Person"));
   auto pattern = ds.AddPattern(start_node);
   pattern.second.relationships_.emplace_back(
       DataStructures::Relationship(DataStructures::Relationship::Direction::RIGHT));
+  pattern.second.relationships_.back().types_.emplace_back(ds.GetEdgeTypeIndex("Likes"));
   pattern.second.nodes_.emplace_back(DataStructures::Node(ds.GetVariableIndex("q")));
   pattern.second.nodes_.back().labels_.emplace_back(ds.GetLabelIndex("Cute"));
+  pattern.second.nodes_.back().labels_.emplace_back(ds.GetLabelIndex("Person"));
   auto match = ds.AddMatch();
   match.second.patterns_.emplace_back(pattern.first);
 
   // create a return statement
-
-
-  // return of got property
   auto return_stmt = ds.AddReturn(false);
 
   for (auto node_name : {"p", "q"}) {
@@ -63,9 +63,16 @@ DataStructures basic_traversal() {
         DataStructures::ExpressionOperand::PROPERTY, ds.GetPropertyIndex("name"));
 
     // adding to return
-    return_stmt.second.expressions_.emplace_back(expression_prop_getter.first, -1);
+    return_stmt.second.expressions_.emplace_back(expression_prop_getter.first, node_name, -1);
   }
 
+  // add a param getter to the return statement
+  auto param_getter = ds.AddExpression(DataStructures::ExpressionOp::PARAMETER);
+  param_getter.second.operands_.emplace_back(
+      DataStructures::ExpressionOperand::PARAMETER, ds.GetParamIndex("user_value"));
+  // TODO this is NOT correct
+  // the header in this situation should contain the actually passed param (how to differentiate???)
+  return_stmt.second.expressions_.emplace_back(param_getter.first, "user_value", -1);
 
   return ds;
 }

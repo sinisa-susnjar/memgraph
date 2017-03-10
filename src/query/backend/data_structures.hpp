@@ -17,9 +17,11 @@
 
 #include "utils/assert.hpp"
 
+
+namespace query {
+
 using std::vector;
 using std::make_pair;
-
 
 /**
  * Data structures used by the compiler. Used as support
@@ -63,6 +65,13 @@ public:
 
   const auto &edge_types() const { return edge_types_; }
 
+  auto GetParamIndex(const std::string &name) {
+    return GetNamedElement(params_, name);
+
+  }
+
+  const auto &params() const { return params_; }
+
 
   /**
    * Following are the expression data structures.
@@ -73,7 +82,8 @@ public:
     EXPRESSION,
     PROPERTY,
     LABEL,
-    EDGE_TYPE
+    EDGE_TYPE,
+    PARAMETER
     // TODO add all possible expression operands
   };
 
@@ -124,6 +134,7 @@ public:
   }
 
   const auto &expressions() const { return expressions_; }
+
   auto &expressions() { return expressions_; }
 
 
@@ -138,12 +149,14 @@ public:
     // pairs of (property_index, expression_index)
     vector<std::pair<int, int>> properties_;
 
-    Node(int variable=-1) : variable_(variable) {}
+    Node(int variable = -1) : variable_(variable) {}
   };
 
   class Relationship {
   public:
-    enum Direction { LEFT, RIGHT, BOTH };
+    enum class Direction {
+      LEFT, RIGHT, BOTH
+    };
     Direction direction_;
     // relationship name, -1 if not named
     int variable_{-1};
@@ -151,11 +164,11 @@ public:
     // pairs of (property_index, expression_index)
     vector<std::pair<int, int>> properties_;
 
-    bool has_range_= false;
+    bool has_range_ = false;
     long long lower_bound = 1LL;
     long long upper_bound = LLONG_MAX;
 
-    Relationship(Direction direction, int variable=-1) :
+    Relationship(Direction direction, int variable = -1) :
         direction_(direction), variable_(variable) {}
   };
 
@@ -173,67 +186,69 @@ public:
     patterns_.emplace_back();
     auto &added_pattern = patterns_.back();
     added_pattern.nodes_.emplace_back(start_node);
-    return make_pair((int)patterns_.size() - 1, std::ref(added_pattern));
+    return make_pair((int) patterns_.size() - 1, std::ref(added_pattern));
   }
 
   auto &patterns() { return patterns_; }
+
   const auto &patterns() const { return patterns_; }
 
   /**
    * Following is a type hierarchy for clauses. All
    * inherit clause and define their own members.
    */
-   class Clause {
-   public:
+  class Clause {
+  public:
 
-     enum class Type {
-       MATCH,
-       UNWIND,
-       MERGE,
-       CREATE,
-       SET,
-       DELETE,
-       REMOVE,
-       WITH,
-       RETURN
-       // TODO add all other ones
-     };
+    enum class Type {
+      MATCH,
+      UNWIND,
+      MERGE,
+      CREATE,
+      SET,
+      DELETE,
+      REMOVE,
+      WITH,
+      RETURN
+      // TODO add all other ones
+    };
 
-     const Type type_;
+    const Type type_;
 
-     Clause(Type type) : type_(type) {}
-     virtual ~Clause() {}
+    Clause(Type type) : type_(type) {}
 
-     /**
-      * Returns a reference to this Clause, cast to the desired
-      * derived type. Throws std::bad_cast if the conversion is
-      * not allowed.
-      *
-      * @tparam TDerived The type to return.
-      * @return A reference to this, cast to TDerived
-      */
-     template <typename TDerived>
-     TDerived &As() {
-       auto *r_val = dynamic_cast<TDerived*>(this);
-       if (r_val == nullptr)
-         // TODO consider a specialized exception here
-         throw std::bad_cast();
+    virtual ~Clause() {}
 
-       return *r_val;
-     }
-   };
+    /**
+     * Returns a reference to this Clause, cast to the desired
+     * derived type. Throws std::bad_cast if the conversion is
+     * not allowed.
+     *
+     * @tparam TDerived The type to return.
+     * @return A reference to this, cast to TDerived
+     */
+    template<typename TDerived>
+    TDerived &As() {
+      auto *r_val = dynamic_cast<TDerived *>(this);
+      if (r_val == nullptr)
+        // TODO consider a specialized exception here
+        throw std::bad_cast();
+
+      return *r_val;
+    }
+  };
 
   /**
    * Returns all the clauses that can then be dynamically
    * cast to their exact type (which is known from clause.type_
    */
   auto &clauses() { return clauses_; }
+
   const auto &clauses() const { return clauses_; }
 
   class Match : public Clause {
   public:
-    // optional WHERE expression
-    int expression_{-1};
+    int where_expression_{-1};
     // indices of patterns in this match
     vector<int> patterns_;
 
@@ -254,9 +269,9 @@ public:
   public:
     // if the return clause contains '*' at it's start
     bool return_all_;
-    // vector of pairs (expression, variable)
+    // vector of tuples (expression, expr_text, variable)
     // where variable is -1 if there is no AS
-    vector<std::pair<int, int>> expressions_;
+    vector<std::tuple<int, std::string, int>> expressions_;
 
     Return(bool return_all) : Clause(Type::RETURN),
                               return_all_(return_all) {}
@@ -273,8 +288,8 @@ public:
   }
 
   /** Convenience functions for getting clauses of a specific type */
-  template <typename TDerived>
-  const auto clauses(Clause::Type type) const {
+  template<typename TDerived>
+  const auto ClausesOfType(Clause::Type type) const {
     vector<std::reference_wrapper<TDerived>> r_val;
     for (auto &clause_ptr : clauses())
       if (clause_ptr->type_ == type)
@@ -283,14 +298,16 @@ public:
     return r_val;
   }
 
-  const auto matches() const { return clauses<Match>(Clause::Type::MATCH); }
-  const auto returns() const { return clauses<Return>(Clause::Type::RETURN); }
+  const auto Matches() const { return ClausesOfType<Match>(Clause::Type::MATCH); }
+
+  const auto Returns() const { return ClausesOfType<Return>(Clause::Type::RETURN); }
 
 private:
   vector<std::string> variables_;
   vector<std::string> properties_;
   vector<std::string> labels_;
   vector<std::string> edge_types_;
+  vector<std::string> params_;
   vector<Expression> expressions_;
   vector<Pattern> patterns_;
   vector<std::unique_ptr<Clause>> clauses_;
@@ -304,7 +321,7 @@ private:
    *    (found existing or added new).
    */
   int GetNamedElement(vector<std::string> &collection,
-                          const std::string &name) {
+                      const std::string &name) {
 
     for (int i = 0; i < collection.size(); ++i)
       if (collection[i] == name)
@@ -313,4 +330,5 @@ private:
     collection.emplace_back(name);
     return collection.size() - 1;
   }
+};
 };

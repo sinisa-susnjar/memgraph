@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <tuple>
 
 #include "query/backend/cpp/named_antlr_tokens.hpp"
 #include "utils/assert.hpp"
@@ -37,12 +38,15 @@ const std::string kStreamVar = "stream";
 const std::string kPropVarPrefix = "property_";
 const std::string kLabelVarPrefix = "label_";
 const std::string kEdgeTypeVarPrefix = "edge_type_";
+const std::string kParamVarPrefix = "param_";
 
 // prefixes for traversal variables
 const std::string kPatternVarPrefix = "pattern_";
 const std::string kNodeVarPrefix = "node_";
+const std::string kRelationshipVarPrefix = "relationship_";
 const std::string kFilterSuffix = "_filter";
 const std::string kLocalVertexVar = "vertex";
+const std::string kLocalEdgeVar = "edge";
 const std::string kTraversalVarPrefix = "traversal_";
 const std::string kCartesianPrefix = "cartesian_";
 
@@ -110,12 +114,19 @@ void query::CodeGenerator::GenerateTraversal() {
 
   // iterate through all the patterns in all the matches
   int pattern_index = 0;
-  for (auto &match : data_structures_.matches())
+  for (auto &match : data_structures_.Matches())
     for (auto pattern_ind : match.get().patterns_) {
+      const auto &pattern = data_structures_.patterns()[pattern_ind];
+
+      // generate node filters
       int current_node = 0;
-      for (const auto &node : data_structures_.patterns()[pattern_ind].nodes_)
+      for (const auto &node : pattern.nodes_)
         GenerateVertexFilter(pattern_index, current_node++, node);
-      // TODO generate edge filters
+
+      // generate edge filters
+      int current_relationship = 0;
+      for (const auto &relationship : pattern.relationships_)
+        GenerateRelationshipFilter(pattern_index, current_relationship++, relationship);
 
       GeneratePatternTraversal(pattern_index++);
     }
@@ -123,7 +134,7 @@ void query::CodeGenerator::GenerateTraversal() {
   // generate the final cartesian for all the traversals
   Fmt("auto {}0 = Cartesian(", kCartesianPrefix);
   for (int i = 0; i < pattern_index; ++i) {
-    if(i > 0) Emit(", ");
+    if (i > 0) Emit(", ");
     Emit(kTraversalVarPrefix, i);
   }
   NL(");");
@@ -135,17 +146,23 @@ const std::string NodeFilterVarName(int pattern_ind, int node_ind) {
       kNodeVarPrefix, node_ind, kFilterSuffix);
 }
 
+const std::string RelationshipFilterVarName(int pattern_ind, int relationship_ind) {
+  return fmt::format(
+      "{}{}_{}{}{}", kTraversalVarPrefix, pattern_ind,
+      kRelationshipVarPrefix, relationship_ind, kFilterSuffix);
+}
+
 bool CodeGenerator::GenerateVertexFilter(
     int pattern_ind, int node_ind, const DataStructures::Node &node) {
   if (node.labels_.size() > 0 || node.properties_.size() > 0) {
     bool is_first = true;
     Fmt("auto {} = [](const {} &{})",
         NodeFilterVarName(pattern_ind, node_ind), kVertexClass, kLocalVertexVar);
-    for (auto label : node.labels_){
+    for (auto label : node.labels_) {
       NL().Tab();
-      if (!is_first){
+      if (!is_first) {
         Tab().Emit("&& ");
-      }else {
+      } else {
         Emit("return ");
         is_first = false;
       }
@@ -156,7 +173,32 @@ bool CodeGenerator::GenerateVertexFilter(
 
     Emit(";").NL().Emit("};").NL();
     return true;
-  }else
+  } else
+    return false;
+}
+
+bool CodeGenerator::GenerateRelationshipFilter(
+    int pattern_ind, int relationship_ind, const DataStructures::Relationship &relationship) {
+  if (relationship.types_.size() > 0 || relationship.properties_.size() > 0) {
+    bool is_first = true;
+    Fmt("auto {} = [](const {} &{})",
+        RelationshipFilterVarName(pattern_ind, relationship_ind), kEdgeClass, kLocalEdgeVar);
+    for (auto edge_type : relationship.types_) {
+      NL().Tab();
+      if (!is_first) {
+        Tab().Emit("&& ");
+      } else {
+        Emit("return ");
+        is_first = false;
+      }
+      Fmt("{}.edge_type == {}{}", kLocalEdgeVar, kEdgeTypeVarPrefix, edge_type);
+    }
+
+    // TODO generate expression based filters, if possible here
+
+    Emit(";").NL().Emit("};").NL();
+    return true;
+  } else
     return false;
 }
 
@@ -176,20 +218,31 @@ void CodeGenerator::GeneratePatternTraversal(const int pattern_index) {
     NL().Fmt("\t.{}(Expression::Back, ",
              relationship.has_range_ ? "ExpandVar" : "Expand");
     switch (relationship.direction_) {
-      case DataStructures::Relationship::LEFT:
+      case DataStructures::Relationship::Direction::LEFT:
         Emit("Direction::In");
         break;
-      case DataStructures::Relationship::RIGHT:
+      case DataStructures::Relationship::Direction::RIGHT:
         Emit("Direction::Out");
         break;
-      case DataStructures::Relationship::BOTH:
+      case DataStructures::Relationship::Direction::BOTH:
         Emit("Direction::Both");
         break;
     }
 
-    // TODO vertex and edge filtering comes here
+    // node filtering
+    if (node.labels_.size() > 0 || node.properties_.size() > 0)
+      Fmt(", {}", NodeFilterVarName(pattern_index, relationship_ind + 1));
+    else
+      Emit(", {}");
+
+    // relationship filtering
+    if (relationship.types_.size() > 0 || relationship.properties_.size() > 0)
+      Fmt(", {}", RelationshipFilterVarName(pattern_index, relationship_ind));
+    else
+      Emit(", {}");
+
     if (relationship.has_range_)
-      Emit(", {}, {}").Fmt(", {}, {}", relationship.lower_bound, relationship.upper_bound);
+      Fmt(", {}, {}", relationship.lower_bound, relationship.upper_bound);
 
     Emit(")");
   }
@@ -202,34 +255,48 @@ void CodeGenerator::GeneratePatternTraversal(const int pattern_index) {
  */
 void query::CodeGenerator::GenerateNamedStuff() {
   auto add_named = [this](const std::string &prop_var_prefix,
-                                     const auto &collection,
-                                     const std::string &db_accessor_func) {
+                          const auto &collection,
+                          const std::string &collection_name,
+                          const std::string &db_accessor_func) {
 
-    NL().Comm().Emit(db_accessor_func, " variables").NL();
     for (int i = 0; i < collection.size(); ++i)
-      Fmt("auto {}{} = {}.{}(\"{}\");", prop_var_prefix, i, kDbAccessorVar,
+      Fmt("auto {}{} = {}.{}(\"{}\");", prop_var_prefix, i, collection_name,
           db_accessor_func, collection[i]).NL();
   };
 
-  if (data_structures_.properties().size() > 0)
-    add_named(kPropVarPrefix, data_structures_.properties(), "property");
-  if (data_structures_.labels().size() > 0)
-    add_named(kLabelVarPrefix, data_structures_.labels(), "label");
-  if (data_structures_.edge_types().size() > 0)
-    add_named(kEdgeTypeVarPrefix, data_structures_.edge_types(), "edge_type");
+  if (data_structures_.properties().size())
+    add_named(kPropVarPrefix, data_structures_.properties(), kDbAccessorVar, "property");
+
+  if (data_structures_.labels().size())
+    add_named(kLabelVarPrefix, data_structures_.labels(), kDbAccessorVar, "label");
+
+  if (data_structures_.edge_types().size())
+    add_named(kEdgeTypeVarPrefix, data_structures_.edge_types(), kDbAccessorVar, "edge_type");
+
+  if (data_structures_.params().size())
+    add_named(kParamVarPrefix, data_structures_.params(), kParamsVar, "At");
 }
 
 void query::CodeGenerator::GenerateReturn() {
   // TODO for now only MATCH ... RETURN is supported
   NL().Comm("return statement").NL();
 
+  // headers
+  NL().Comm("headers");
+  NL().Emit(kStreamVar, ".Header(std::vector{");
+  for (auto &ret : data_structures_.Returns()) {
+    for (const auto &return_element : ret.get().expressions_)
+    NL().Tab().Fmt("\"{}\"", std::get<1>(return_element));
+  }
+  Emit("});").NL();
+
   // generate the basic visitor structure
-  Emit(kCartesianPrefix, "0.Visit([](Paths &p) {").NL();
+  NL().Emit(kCartesianPrefix, "0.Visit([](Paths &p) {").NL();
 
   // TODO generate all the variables
   int path_counter = 0;
   Tab().Comm("variables defined in the query").NL();
-  for (auto match : data_structures_.matches())
+  for (auto match : data_structures_.Matches())
     for (auto pattern_ind : match.get().patterns_) {
       auto &pattern = data_structures_.patterns()[pattern_ind];
       auto first_node_var = pattern.nodes_[0].variable_;
@@ -258,7 +325,7 @@ void query::CodeGenerator::GenerateReturn() {
   GenerateExpressions();
 
   NL().Tab().Comm("streaming out return statements").NL();
-  for (auto &ret : data_structures_.returns()) {
+  for (auto &ret : data_structures_.Returns()) {
     // TODO write out header
 
     // TODO return_all
@@ -266,10 +333,11 @@ void query::CodeGenerator::GenerateReturn() {
     // TODO write out results
     Tab().Emit(kStreamVar, ".Result(std::vector<TypedValue>{");
     for (auto expression : ret.get().expressions_)
-      NL().Tab(2).Fmt("{}{},", kExpressionVarPrefix, expression.first);
+      NL().Tab(2).Fmt("{}{},", kExpressionVarPrefix, std::get<0>(expression));
     NL().Tab().Emit("});").NL();
 
     // TODO write out meta
+    NL().Comm("TODO write out metdata").NL();
   }
 
   Emit("};");
@@ -290,6 +358,10 @@ void CodeGenerator::GenerateExpressions() {
             kPropVarPrefix, expression.operands_[1].second);
         break;
 
+      case DataStructures::ExpressionOp::PARAMETER:
+        Fmt("{}{}", kParamVarPrefix, expression.operands_[0].second);
+        break;
+
       case DataStructures::ExpressionOp::LOGICAL_OR:
       case DataStructures::ExpressionOp::LOGICAL_XOR:
       case DataStructures::ExpressionOp::LOGICAL_AND:
@@ -308,8 +380,7 @@ void CodeGenerator::GenerateExpressions() {
       case DataStructures::ExpressionOp::UNARY_MINUS:
       case DataStructures::ExpressionOp::UNARY_PLUS:
       case DataStructures::ExpressionOp::LITERAL:
-      case DataStructures::ExpressionOp::PARAMETER:
-        permanent_fail("Not yet implemented");
+      permanent_fail("Not yet implemented");
     }
 
     Emit(";").NL();
