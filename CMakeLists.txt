@@ -62,7 +62,7 @@ find_package(Threads REQUIRED)
 # c++14
 # TODO: set here 17 once it will be available in the cmake version (3.8)
 set(cxx_standard 14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z -Wall")
 # -----------------------------------------------------------------------------
 
 # dir variables
@@ -255,6 +255,8 @@ option(MANUAL_TESTS "Add manual test binaries" OFF)
 message(STATUS "Add manual test binaries: ${MANUAL_TESTS}")
 option(UNIT_TESTS "Add unit test binaries" OFF)
 message(STATUS "Add unit test binaries: ${UNIT_TESTS}")
+option(TEST_COVERAGE "Generate coverage reports from unit tests" OFF)
+message(STATUS "Generate coverage from unit tests: ${TEST_COVERAGE}")
 # -----------------------------------------------------------------------------
 
 # includes
@@ -356,12 +358,14 @@ set(memgraph_src_files
 
 # STATIC library used by memgraph executables
 add_library(memgraph_lib STATIC ${memgraph_src_files})
-add_dependencies(memgraph_lib generate_opencypher_parser)
+add_dependencies(memgraph_lib generate_opencypher_parser
+                              generate_plan_compiler_flags)
 # -----------------------------------------------------------------------------
 
 # STATIC PIC library used by query engine
 add_library(memgraph_pic STATIC ${memgraph_src_files})
-add_dependencies(memgraph_pic generate_opencypher_parser)
+add_dependencies(memgraph_pic generate_opencypher_parser
+                              generate_plan_compiler_flags)
 set_property(TARGET memgraph_pic PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 # -----------------------------------------------------------------------------
 
@@ -461,3 +465,23 @@ foreach(file_path ${__HARDCODED_SOURCES})
                           PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                           "${CMAKE_BINARY_DIR}/__hardcoded_targets")
 endforeach()
+
+get_target_cxx_flags(memgraph_lib compile_flags)
+set(plan_compiler_flags_file ${build_include_dir}/query/plan_compiler_flags.hpp)
+add_custom_target(generate_plan_compiler_flags
+  COMMENT
+  "Generating ${plan_compiler_flags_file} with compile flags: ${compile_flags}"
+  VERBATIM
+  COMMAND
+  /bin/echo -e
+  "#pragma once"
+  "\\n// Generated from cmake. Flags are taken from current build configuration."
+  "\\n// Do not edit this manually!"
+  "\\nstatic constexpr const char compile_flags[] = \"${compile_flags}\";"
+  "\\nstatic constexpr const char include_dirs[] ="
+  "\"-I${CMAKE_BINARY_DIR}/include -I${CMAKE_SOURCE_DIR}/libs/fmt\";"
+  "\\nstatic constexpr const char link_dirs[] = \"-L${CMAKE_BINARY_DIR}\";"
+  > ${plan_compiler_flags_file}
+  BYPRODUCTS ${plan_compiler_flags_file}
+)
+set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES ${plan_compiler_flags_file})
