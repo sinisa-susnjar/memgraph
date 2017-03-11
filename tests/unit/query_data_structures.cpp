@@ -9,6 +9,7 @@
 
 #include "query/backend/data_structures.hpp"
 
+using query::DataStructures;
 
 TEST(QueryDataStructures, Variables) {
   DataStructures ds;
@@ -62,8 +63,10 @@ TEST(QueryDataStructures, Expression) {
   EXPECT_EQ(ds.expressions().size(), 1);
 
   auto expr2 = ds.AddExpression(DataStructures::ExpressionOp::SUBTRACTION);
-  expr2.second.operands_.emplace_back(DataStructures::ExpressionOperand ::EXPRESSION, 42);
-  EXPECT_EQ(expr2.second.operands_[0].first, DataStructures::ExpressionOperand::EXPRESSION);
+  expr2.second.operands_.emplace_back(
+      DataStructures::ExpressionOperand::EXPRESSION, 42);
+  EXPECT_EQ(expr2.second.operands_[0].first,
+            DataStructures::ExpressionOperand::EXPRESSION);
   EXPECT_EQ(expr2.second.operands_[0].second, 42);
 }
 
@@ -82,5 +85,5 @@ TEST(QueryDataStructures, MatchClause) {
   EXPECT_EQ(ds.clauses().size(), 0);
   auto match = ds.AddMatch();
   EXPECT_EQ(ds.clauses().size(), 1);
-  EXPECT_EQ(-1, match.second.expression_);
+  EXPECT_EQ(-1, match.second.where_expression_);
 }

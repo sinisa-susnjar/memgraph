@@ -5,18 +5,17 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-#include <cstdint>
 #include <climits>
-#include <unordered_map>
-#include <memory>
-#include <typeinfo>
-#include <utility>
+#include <cstdint>
 #include <functional>
+#include <memory>
+#include <string>
+#include <typeinfo>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "utils/assert.hpp"
-
 
 namespace query {
 
@@ -31,7 +30,6 @@ using std::make_pair;
 class DataStructures {
 
 public:
-
   /**
    *  Following are accessors for various query elements
    *  that are identified with a string.
@@ -67,11 +65,9 @@ public:
 
   auto GetParamIndex(const std::string &name) {
     return GetNamedElement(params_, name);
-
   }
 
   const auto &params() const { return params_; }
-
 
   /**
    * Following are the expression data structures.
@@ -105,7 +101,7 @@ public:
     MODULO,
     UNARY_MINUS,
     UNARY_PLUS,
-    VARIABLE,   // turns a variable into an expression
+    VARIABLE, // turns a variable into an expression
     PROPERTY_GETTER,
     LITERAL,
     PARAMETER
@@ -127,16 +123,16 @@ public:
    * @param op Expression operation.
    * @return  pair<int, Expression &> that is (index, expression)
    */
-  auto AddExpression(ExpressionOp op) {
-    expressions_.emplace_back(Expression{op});
-    return make_pair(expressions_.size() - 1,
+  auto AddExpression(ExpressionOp op,
+                     std::vector<std::pair<ExpressionOperand, int>> ops = {}) {
+    expressions_.emplace_back(Expression{op, ops});
+    return make_pair((int)expressions_.size() - 1,
                      std::ref(expressions_.back()));
   }
 
   const auto &expressions() const { return expressions_; }
 
   auto &expressions() { return expressions_; }
-
 
   /**
    * The following functions are for pattern matching.
@@ -154,9 +150,7 @@ public:
 
   class Relationship {
   public:
-    enum class Direction {
-      LEFT, RIGHT, BOTH
-    };
+    enum class Direction { LEFT, RIGHT, BOTH };
     Direction direction_;
     // relationship name, -1 if not named
     int variable_{-1};
@@ -168,8 +162,8 @@ public:
     long long lower_bound = 1LL;
     long long upper_bound = LLONG_MAX;
 
-    Relationship(Direction direction, int variable = -1) :
-        direction_(direction), variable_(variable) {}
+    Relationship(Direction direction, int variable = -1)
+        : direction_(direction), variable_(variable) {}
   };
 
   struct Pattern {
@@ -186,7 +180,7 @@ public:
     patterns_.emplace_back();
     auto &added_pattern = patterns_.back();
     added_pattern.nodes_.emplace_back(start_node);
-    return make_pair((int) patterns_.size() - 1, std::ref(added_pattern));
+    return make_pair((int)patterns_.size() - 1, std::ref(added_pattern));
   }
 
   auto &patterns() { return patterns_; }
@@ -199,7 +193,6 @@ public:
    */
   class Clause {
   public:
-
     enum class Type {
       MATCH,
       UNWIND,
@@ -227,8 +220,7 @@ public:
      * @tparam TDerived The type to return.
      * @return A reference to this, cast to TDerived
      */
-    template<typename TDerived>
-    TDerived &As() {
+    template <typename TDerived> TDerived &As() {
       auto *r_val = dynamic_cast<TDerived *>(this);
       if (r_val == nullptr)
         // TODO consider a specialized exception here
@@ -261,7 +253,7 @@ public:
    */
   auto AddMatch() {
     clauses_.emplace_back(std::make_unique<Match>(Match()));
-    return make_pair(clauses_.size() - 1,
+    return make_pair((int)clauses_.size() - 1,
                      std::ref(clauses_.back()->As<Match>()));
   }
 
@@ -273,8 +265,7 @@ public:
     // where variable is -1 if there is no AS
     vector<std::tuple<int, std::string, int>> expressions_;
 
-    Return(bool return_all) : Clause(Type::RETURN),
-                              return_all_(return_all) {}
+    Return(bool return_all) : Clause(Type::RETURN), return_all_(return_all) {}
   };
 
   /**
@@ -283,13 +274,12 @@ public:
    */
   auto AddReturn(bool return_all) {
     clauses_.emplace_back(std::make_unique<Return>(Return(return_all)));
-    return make_pair(clauses_.size() - 1,
+    return make_pair((int)clauses_.size() - 1,
                      std::ref(clauses_.back()->As<Return>()));
   }
 
   /** Convenience functions for getting clauses of a specific type */
-  template<typename TDerived>
-  const auto ClausesOfType(Clause::Type type) const {
+  template <typename TDerived> auto ClausesOfType(Clause::Type type) const {
     vector<std::reference_wrapper<TDerived>> r_val;
     for (auto &clause_ptr : clauses())
       if (clause_ptr->type_ == type)
@@ -298,9 +288,8 @@ public:
     return r_val;
   }
 
-  const auto Matches() const { return ClausesOfType<Match>(Clause::Type::MATCH); }
-
-  const auto Returns() const { return ClausesOfType<Return>(Clause::Type::RETURN); }
+  auto Matches() const { return ClausesOfType<Match>(Clause::Type::MATCH); }
+  auto Returns() const { return ClausesOfType<Return>(Clause::Type::RETURN); }
 
 private:
   vector<std::string> variables_;
@@ -322,13 +311,12 @@ private:
    */
   int GetNamedElement(vector<std::string> &collection,
                       const std::string &name) {
-
-    for (int i = 0; i < collection.size(); ++i)
+    for (int i = 0; i < (int)collection.size(); ++i)
       if (collection[i] == name)
         return i;
 
     collection.emplace_back(name);
-    return collection.size() - 1;
+    return (int)collection.size() - 1;
   }
 };
 };

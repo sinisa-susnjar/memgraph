@@ -1,8 +1,9 @@
 #pragma once
 
-#include <experimental/filesystem>
 #include "antlr4-runtime.h"
 #include "query/backend/cpp/cypher_main_visitor.hpp"
+#include "utils/exceptions/basic_exception.hpp"
+#include <experimental/filesystem>
 
 namespace fs = std::experimental::filesystem;
 
@@ -13,8 +14,8 @@ namespace cpp {
 using namespace antlr4;
 
 class GeneratorException : public BasicException {
- public:
-     using BasicException::BasicException;
+public:
+  using BasicException::BasicException;
   GeneratorException() : BasicException("") {}
 };
 
@@ -23,7 +24,7 @@ class GeneratorException : public BasicException {
  * C++.
  */
 class Generator {
- public:
+public:
   /**
    * Generates cpp code inside file on the path.
    */
