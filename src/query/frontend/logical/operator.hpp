@@ -2,11 +2,14 @@
 
 #include <memory>
 #include <vector>
+#include <cstdio>
 
 #include "database/graph_db_accessor.hpp"
 #include "query/frontend/ast/ast.hpp"
 #include "query/frontend/interpret/interpret.hpp"
 #include "query/frontend/typecheck/symbol_table.hpp"
+#include "query/context.hpp"
+#include "fmt/format.h"
 
 namespace query {
 
@@ -37,6 +40,7 @@ class LogicalOperator {
  public:
   auto children() { return children_; };
   virtual std::unique_ptr<Cursor> MakeCursor(GraphDbAccessor db) = 0;
+  virtual std::shared_ptr<LogicalOperator> Compile(Context& ctx) = 0; 
   virtual void WriteHeader(ConsoleResultStream&) {}
   virtual std::vector<Symbol> OutputSymbols(SymbolTable& symbol_table) {
     return {};
@@ -87,9 +91,39 @@ class ScanAll : public LogicalOperator {
     }
   };
 
+  PlanCompiler compiler;
+
  public:
   std::unique_ptr<Cursor> MakeCursor(GraphDbAccessor db) override {
     return std::make_unique<Cursor>(ScanAllCursor(*this, db));
+  }
+
+  std::shared_ptr<LogicalOperator> Compile(Context& context) override {
+    int compilation_id = context.NewCompilationId(); 
+    std::string factory_method = fmt::format("CreateLogicalOperator{0}", compilation_id);
+    std::string code = fmt::format(
+        R"##(
+            #include <memory>
+            #include "query/frontend/logical/operator.hpp"
+            #include "query/frontend/ast/ast.hpp"
+
+            std::shared_ptr<LogicalOperator> {0}() {
+              Ident ident(0); ident.identifier_ = "n";
+              std::shared_ptr<NodePart> node_part = std::shared_ptr<NodePart>(new NodePart(1));
+              node_part.identifier_ = ident; 
+              return std::shared_ptr<LogicalOperator>(new ScanAll(node_part));
+            }
+        )##", factory_method);
+    std::string cpp_name = std::tmpnam(nullptr);
+    std::FILE* tmpf = std::fopen(cpp_name, "w");
+    std::fputs(code, tmpf);
+    std::fflush(tmpf);
+    std::string so_name = std::tmpnam(nullptr);
+    plan_compiler.compile(cpp_name, so_name);
+    std::fclose(tmpf);
+    void *so = dlopen(so_name.c_str(), RTLD_NOW);
+    auto factory = reinterpret_cast<std::shared_ptr<LogicalOperator>(*)()>(dlsym(so, factory_method));
+    return factory();
   }
 
  private:

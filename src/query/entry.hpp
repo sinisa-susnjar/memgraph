@@ -35,6 +35,7 @@ class Engine {
     Frame frame(symbol_table.max_position());
 
     // interpret
+    // logical_plan = logical_plan.Compile(context);
     auto cursor = logical_plan.MakeCursor(frame);
     logical_plan.WriteHeader(stream);
     auto symbols = logical_plan.OutputSymbols(symbol_table);

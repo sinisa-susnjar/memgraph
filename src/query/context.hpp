@@ -24,9 +24,11 @@ struct Config {
 class Context {
  public:
   int uid_counter;
+  int compilation_id_counter{0};
   Context(Config config, GraphDbAccessor& db_accessor)
       : config(config), db_accessor(db_accessor) {}
 
+  int NewCompilationId() { return compilation_id_counter++; }
   Config config;
   GraphDbAccessor& db_accessor;
 };

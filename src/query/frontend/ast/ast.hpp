@@ -55,6 +55,8 @@ class Tree {
   int uid() const { return uid_; }
   virtual void Accept(TreeVisitorBase& visitor) = 0;
 
+  virtual std::string Lift() { throw std::runtime_error("Unimplemented"); }
+
  private:
   const int uid_;
 };
