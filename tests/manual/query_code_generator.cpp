@@ -28,6 +28,22 @@ DataStructures basic_data_structures() {
   return ds;
 }
 
+DataStructures match_n_return_n() {
+  DataStructures ds;
+  // query: MATCH (n) RETURN n;
+  DataStructures::Node start_node(ds.GetVariableIndex("n"));
+  auto pattern = ds.AddPattern(start_node);
+  auto return_stmt = ds.AddReturn(false);
+  auto match = ds.AddMatch();
+  match.second.patterns_.emplace_back(pattern.first);
+
+  auto node_expression_var = ds.AddExpression(DataStructures::ExpressionOp::VARIABLE);
+  node_expression_var.second.operands_.emplace_back(
+      DataStructures::ExpressionOperand::VARIABLE, ds.GetVariableIndex("n"));
+  return_stmt.second.expressions_.emplace_back(node_expression_var.first, "n", -1);
+  return ds;
+}
+
 DataStructures basic_traversal() {
   DataStructures ds;
 
@@ -84,6 +100,7 @@ int main() {
 
   std::function<DataStructures()> functions[]{
       basic_data_structures,
+      match_n_return_n,
       basic_traversal,
   };
 

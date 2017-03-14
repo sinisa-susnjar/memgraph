@@ -5,17 +5,18 @@
 
 #pragma once
 
-#include <climits>
-#include <cstdint>
-#include <functional>
-#include <memory>
 #include <string>
-#include <typeinfo>
-#include <unordered_map>
-#include <utility>
 #include <vector>
+#include <cstdint>
+#include <climits>
+#include <unordered_map>
+#include <memory>
+#include <typeinfo>
+#include <utility>
+#include <functional>
 
 #include "utils/assert.hpp"
+
 
 namespace query {
 
@@ -30,6 +31,7 @@ using std::make_pair;
 class DataStructures {
 
 public:
+
   /**
    *  Following are accessors for various query elements
    *  that are identified with a string.
@@ -65,9 +67,11 @@ public:
 
   auto GetParamIndex(const std::string &name) {
     return GetNamedElement(params_, name);
+
   }
 
   const auto &params() const { return params_; }
+
 
   /**
    * Following are the expression data structures.
@@ -101,7 +105,7 @@ public:
     MODULO,
     UNARY_MINUS,
     UNARY_PLUS,
-    VARIABLE, // turns a variable into an expression
+    VARIABLE,   // turns a variable into an expression
     PROPERTY_GETTER,
     LITERAL,
     PARAMETER
