@@ -1,2 +1,22 @@
 title: Memgraph
 subTitle: Technical Documentation
+
+baseUrl: http://alpha.memgraph.io/
+cname: alpha.memgraph.io
+
+template:
+  directory: .
+
+menu:
+  items:
+    home:
+      text: Docs
+      relativeUrl: docs/
+    installation:
+      text: Installation
+      relativeUrl: docs/installation.html
+    quick-start:
+      text: Quickstart
+      relativeUrl: docs/quick-start.html
+
+

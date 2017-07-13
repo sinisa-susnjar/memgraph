@@ -1,4 +1,8 @@
-## Quick Start
+---
+currentMenu: quick-start
+---
+
+## Quick Start Guide
 
 This chapter outlines several ways to execute openCypher queries on Memgraph,
 but first it's important to outline several technologies Memgraph uses.

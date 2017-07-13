@@ -64,13 +64,13 @@ parameters should be appended to the end of the `docker run` command in the
 parameters:
 
  Name  | Type | Default | Description
--------|------|:-------:|-------------
- --port | integer | 7687 | Communication port on which to listen.
- --num-workers | integer | CPU count[^1] |  Number of Memgraph worker threads.
- --snapshot-cycle-sec | integer | 300 | Interval (seconds) between database snapshots.<br/>Value of -1 turns taking snapshots off.
- --max-retained-snapshots | integer | 3 | Number of retained snapshots.<br/>Value -1 means without limit.
- --snapshot-on-db-exit | bool | false | Make a snapshot when closing Memgraph.
- --recover-on-startup | bool | false | Recover the database on startup using the last<br/>stored snapshot.
+-------|------|---------|-------------
+ `--port` | integer | 7687 | Communication port on which to listen.
+ `--num-workers` | integer | CPU count[^1] |  Number of Memgraph worker threads.
+ `--snapshot-cycle-sec` | integer | 300 | Interval (seconds) between database snapshots. Value of -1 turns taking snapshots off.
+ `--max-retained-snapshots` | integer | 3 | Number of retained snapshots.Value -1 means without limit.
+ `--snapshot-on-db-exit` | bool | true | Make a snapshot when closing Memgraph.
+ `--recover-on-startup` | bool | true | Recover the database on startup using the last stored snapshot.
 
 [^1]: Maximum number of concurrent executions on the current CPU.
 

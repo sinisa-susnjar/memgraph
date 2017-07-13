@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>{{ title }}</title>
+
+        <link rel="stylesheet" href="{{ baseUrl }}/css/bootstrap.min.css">
+        <link rel="stylesheet" href="{{ baseUrl }}/css/font-awesome.min.css">
+        <link rel="stylesheet" href="{{ baseUrl }}/css/highlight.dark.css">
+        <link rel="stylesheet" href="{{ baseUrl }}/css/main.css">
+
+    </head>
+    <body>
+
+        <header class="navbar navbar-default">
+
+            <a class="navbar-brand" href="{{ baseUrl }}/">
+                <img class="logo" height="40" src="/img/memgraph-logo-white.svg"/>
+                <small class="hidden-xs hidden-sm subtitle">
+                    docs
+                </small>
+            </a>
+        </header>
+
+        <main class="{{ menu ? 'container-fluid' : 'container' }}">
+            <div class="row">
+
+                {% if menu is defined %}
+
+                    <nav id="sidebar" class="col-sm-3 col-lg-2" role="navigation">
+
+                        <ul class="nav nav-pills nav-stacked">
+                            {% for itemId, item in menu.items %}
+                                <li class="{{ itemId == currentMenu ? 'active' }}">
+                                    <a href="{{ item.absoluteUrl|default(baseUrl ~ '/' ~ item.relativeUrl) }}">
+                                        {{ item.text|raw }}
+                                    </a>
+                                </li>
+                                {% if itemId == currentMenu  %}
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+
+                    <ul id="generated-toc" class="generate_from_h3"></ul>
+                    </nav>
+
+                {% endif %}
+                <section id="content" class="{{ menu ? 'col-sm-offset-3 col-lg-offset-2 col-sm-9 col-lg-10' : 'col-sm-12' }}">
+                    {{ content|raw }}
+                </section>
+
+            </div>
+        </main>
+
+        <footer>
+            <div class="{{ menu ? 'container-fluid' : 'container' }}">
+                <p class="text-muted">
+                    Copyright &copy; 2016-2017 <a href="http://memgraph.io">Memgraph Ltd</a> | All rights reserved
+                </p>
+            </div>
+        </footer>
+
+        <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+        <script src="//yastatic.net/highlightjs/8.2/highlight.min.js"></script>
+        <script type="text/javascript" src="{{ baseURL }}/js/generated_toc.js"></script>
+
+        <script>
+            $(function() {
+                $("section>h1").wrap('<div class="page-header" />');
+                // Syntax highlighting
+                hljs.initHighlightingOnLoad();
+            });
+        </script>
+
+    </body>
+</html>

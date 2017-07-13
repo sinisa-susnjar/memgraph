@@ -1,3 +1,7 @@
+---
+currentMenu: upcoming-features
+---
+
 ## Upcoming Features
 
 This chapter describes some of the planned features, that we at Memgraph are
@@ -8,11 +12,10 @@ working on.
 Excellent database performance is one of Memgraph's long-standing goals. We
 will be continually working on improving the performance. This includes:
 
-  * query compilation;
-  * query execution;
-  * core engine performance;
-  * memory usage and
-  * other improvements.
+  * just-in-time (JIT) query compilation & native execution;
+  * performance improvements in the core engine;
+  * improvements in memory usage;
+  * usability, stability and reliability improvements;
 
 ### Indexing by Label-Property
 
