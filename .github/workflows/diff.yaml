@@ -10,7 +10,7 @@ on:
 jobs:
   community_build:
     name: "Community build"
-    runs-on: [self-hosted, Linux, X64, Ubuntu20]
+    runs-on: [self-hosted, Linux, X64, Ubuntu20.04]
     env:
       THREADS: 24
 
@@ -67,7 +67,7 @@ jobs:
 
   coverage_build:
     name: "Coverage build"
-    runs-on: [self-hosted, Linux, X64, Ubuntu20]
+    runs-on: [self-hosted, Linux, X64, Ubuntu20.04]
     env:
       THREADS: 24
 
@@ -122,7 +122,7 @@ jobs:
 
   debug_build:
     name: "Debug build"
-    runs-on: [self-hosted, Linux, X64, Ubuntu20]
+    runs-on: [self-hosted, Linux, X64, Ubuntu20.04]
     env:
       THREADS: 24
 
@@ -196,7 +196,7 @@ jobs:
 
   release_build:
     name: "Release build"
-    runs-on: [self-hosted, Linux, X64, Ubuntu20]
+    runs-on: [self-hosted, Linux, X64, Ubuntu20.04]
     env:
       THREADS: 24
 
@@ -333,7 +333,7 @@ jobs:
 
   release_jepsen_test:
     name: "Release Jepsen Test"
-    runs-on: [self-hosted, Linux, X64, Ubuntu20, JepsenControl]
+    runs-on: [self-hosted, Linux, X64, Debian10, JepsenControl]
     #continue-on-error: true
     env:
       THREADS: 24
