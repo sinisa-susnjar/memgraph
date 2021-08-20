@@ -5,7 +5,7 @@
 
 namespace utils {
 
-inline uint64_t Fnv(const std::string_view &s) {
+inline uint64_t Fnv(const std::string_view s) {
   // fnv1a is recommended so use it as the default implementation.
   uint64_t hash = 14695981039346656037UL;
 

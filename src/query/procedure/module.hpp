@@ -56,7 +56,7 @@ class ModuleRegistry final {
   mutable utils::RWLock lock_{utils::RWLock::Priority::WRITE};
   std::unique_ptr<utils::MemoryResource> shared_{std::make_unique<utils::ResourceWithOutOfMemoryException>()};
 
-  bool RegisterModule(const std::string_view &name, std::unique_ptr<Module> module);
+  bool RegisterModule(std::string_view name, std::unique_ptr<Module> module);
 
   void DoUnloadAllModules();
 
@@ -93,7 +93,7 @@ class ModuleRegistry final {
 
   /// Find a module with given name or return nullptr.
   /// Takes a read lock.
-  ModulePtr GetModuleNamed(const std::string_view &name) const;
+  ModulePtr GetModuleNamed(std::string_view name) const;
 
   /// Remove all loaded (non-builtin) modules.
   /// Takes a write lock.

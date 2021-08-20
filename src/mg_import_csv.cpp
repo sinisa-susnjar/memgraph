@@ -158,7 +158,7 @@ enum class CsvParserState {
   EXPECT_DELIMITER,
 };
 
-bool SubstringStartsWith(const std::string_view &str, size_t pos, const std::string_view &what) {
+bool SubstringStartsWith(const std::string_view str, size_t pos, const std::string_view &what) {
   return utils::StartsWith(utils::Substr(str, pos), what);
 }
 
