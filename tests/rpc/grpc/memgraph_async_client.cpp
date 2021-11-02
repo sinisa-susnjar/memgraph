@@ -73,10 +73,13 @@ class StorageClient {
       // corresponds solely to the request for updates introduced by Finish().
       GPR_ASSERT(ok);
 
-      if (call->status.ok())
+      if (call->status.ok()) {
+#if !defined(NDEBUG)
         std::cout << "Client received: " << call->reply.string_v() << std::endl;
-      else
+#endif
+      } else {
         std::cout << "RPC failed" << std::endl;
+      }
 
       // Once we're complete, deallocate the call object.
       delete call;

@@ -103,8 +103,10 @@ class MemgraphServerImpl final {
         // part of its FINISH state.
         new CallData(service_, cq_);
 
-        // The actual processing.
+#if !defined(NDEBUG)
         std::cout << request_.name() << '\n';
+#endif
+        // The actual processing.
         reply_.set_string_v("Property name " + request_.name());
 
         // And we are done! Let the gRPC runtime know we've finished, using the
