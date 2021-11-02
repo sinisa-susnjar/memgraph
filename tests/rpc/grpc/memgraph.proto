@@ -1,0 +1,82 @@
+// Copyright 2015 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package memgraph;
+
+option optimize_for = SPEED;
+// Jemalloc handles the memory well enough
+option cc_enable_arenas = false;
+
+// The greeting service definition.
+service Greeter {
+  // Sends a greeting
+  rpc SayHello (HelloRequest) returns (HelloReply) {}
+}
+
+service Storage {
+  rpc GetPropertyStream(PropertyRequest) returns (stream PropertyValue);
+  rpc GetProperty(PropertyRequest) returns (PropertyValue);
+}
+
+// The request message containing the user's name.
+message HelloRequest {
+  string name = 1;
+}
+
+// The response message containing the greetings
+message HelloReply {
+  string message = 1;
+}
+
+message PropertyRequest {
+  string name = 1;
+  int64 count = 2;
+}
+
+message Null {
+}
+
+message TemporalData {
+  enum Type {
+    DATE = 0;
+    LOCAL_TIME = 1;
+    LOCAL_DATE_TIME = 2;
+    DURATION = 3;
+  }
+  Type type = 1;
+  int64 microseconds = 2;
+}
+
+message List {
+  repeated PropertyValue property_values = 1;
+}
+
+message Map {
+  map<string, PropertyValue> map = 1;
+}
+
+message PropertyValue {
+  oneof value {
+    Null null_v = 1;
+    bool bool_v = 2;
+    int64 int_v = 3;
+    double double_v = 4;
+    string string_v = 5;
+    List list_v = 6;
+    Map map_v = 7;
+    TemporalData temporal_v = 8;
+  }
+}

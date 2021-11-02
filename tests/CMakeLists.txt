@@ -27,3 +27,6 @@ add_subdirectory(e2e)
 
 # mgbench benchmark test binaries
 add_subdirectory(mgbench)
+
+# temprarily
+add_subdirectory(rpc)
