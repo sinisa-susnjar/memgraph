@@ -21,10 +21,12 @@
 
 using grpc::Server;
 using grpc::ServerAsyncResponseWriter;
+using grpc::ServerAsyncWriter;
 using grpc::ServerBuilder;
 using grpc::ServerCompletionQueue;
 using grpc::ServerContext;
 using grpc::Status;
+using grpc::WriteOptions;
 using memgraph::PropertyRequest;
 using memgraph::PropertyValue;
 using memgraph::Storage;
@@ -58,7 +60,8 @@ class MemgraphServerImpl final {
   // This can be run in multiple threads if needed.
   void HandleRpcs() {
     // Spawn a new CallData instance to serve new clients.
-    new CallData(&service_, cq_.get());
+    new SingleCallData(&service_, cq_.get());
+    new StreamCallData(&service_, cq_.get());
     void *tag;  // uniquely identifies a request.
     bool ok;
     while (true) {
@@ -69,27 +72,34 @@ class MemgraphServerImpl final {
       // tells us whether there is any kind of event or cq_ is shutting down.
       GPR_ASSERT(cq_->Next(&tag, &ok));
       GPR_ASSERT(ok);
-      static_cast<CallData *>(tag)->Proceed();
+      CallData::detag(tag).Proceed();
     }
   }
 
  private:
+  struct CallData {
+    virtual ~CallData(){};
+    static void *tag(CallData &tag) { return static_cast<void *>(&tag); }
+    static CallData &detag(void *tag) { return *static_cast<CallData *>(tag); }
+    virtual void Proceed() = 0;
+  };
+
   // Class encompasing the state and logic needed to serve a request.
-  class CallData {
+  class SingleCallData : public CallData {
    public:
     // Take in the "service" instance (in this case representing an asynchronous
     // server) and the completion queue "cq" used for asynchronous communication
     // with the gRPC runtime.
-    CallData(Storage::AsyncService *service, ServerCompletionQueue *cq)
-        : service_(service), cq_(cq), responder_(&ctx_), status_(CREATE) {
+    SingleCallData(Storage::AsyncService *service, ServerCompletionQueue *cq)
+        : service_(service), cq_(cq), responder_(&ctx_), status_(CallStatus::CREATE) {
       // Invoke the serving logic right away.
       Proceed();
     }
 
-    void Proceed() {
-      if (status_ == CREATE) {
+    void Proceed() override {
+      if (status_ == CallStatus::CREATE) {
         // Make this instance progress to the PROCESS state.
-        status_ = PROCESS;
+        status_ = CallStatus::PROCESS;
 
         // As part of the initial CREATE state, we *request* that the system
         // start processing SayHello requests. In this request, "this" acts are
@@ -97,25 +107,29 @@ class MemgraphServerImpl final {
         // instances can serve different requests concurrently), in this case
         // the memory address of this CallData instance.
         service_->RequestGetProperty(&ctx_, &request_, &responder_, cq_, cq_, this);
-      } else if (status_ == PROCESS) {
+      } else if (status_ == CallStatus::PROCESS) {
         // Spawn a new CallData instance to serve new clients while we process
         // the one for this CallData. The instance will deallocate itself as
         // part of its FINISH state.
-        new CallData(service_, cq_);
+        new SingleCallData(service_, cq_);
 
 #if !defined(NDEBUG)
-        std::cout << request_.name() << '\n';
+        std::cout << "Request received " << request_.name() << '\n';
 #endif
         // The actual processing.
         reply_.set_string_v("Property name " + request_.name());
 
+#if !defined(NDEBUG)
+        std::cout << "Sending reply " << reply_.string_v() << '\n';
+#endif
+
         // And we are done! Let the gRPC runtime know we've finished, using the
         // memory address of this instance as the uniquely identifying tag for
         // the event.
-        status_ = FINISH;
+        status_ = CallStatus::FINISH;
         responder_.Finish(reply_, Status::OK, this);
       } else {
-        GPR_ASSERT(status_ == FINISH);
+        GPR_ASSERT(status_ == CallStatus::FINISH);
         // Once in the FINISH state, deallocate ourselves (CallData).
         delete this;
       }
@@ -141,8 +155,102 @@ class MemgraphServerImpl final {
     ServerAsyncResponseWriter<PropertyValue> responder_;
 
     // Let's implement a tiny state machine with the following states.
-    enum CallStatus { CREATE, PROCESS, FINISH };
+    enum class CallStatus { CREATE, PROCESS, FINISH };
     CallStatus status_;  // The current serving state.
+  };
+
+  class StreamCallData : public CallData {
+   public:
+    // Take in the "service" instance (in this case representing an asynchronous
+    // server) and the completion queue "cq" used for asynchronous communication
+    // with the gRPC runtime.
+    StreamCallData(Storage::AsyncService *service, ServerCompletionQueue *cq)
+        : service_(service), cq_(cq), responder_(&ctx_), status_(CallStatus::CREATE) {
+      // Invoke the serving logic right away.
+      Proceed();
+    }
+
+    void Proceed() override {
+      if (status_ == CallStatus::CREATE) {
+        // Make this instance progress to the PROCESS state.
+        status_ = CallStatus::PROCESS;
+
+        // As part of the initial CREATE state, we *request* that the system
+        // start processing SayHello requests. In this request, "this" acts are
+        // the tag uniquely identifying the request (so that different CallData
+        // instances can serve different requests concurrently), in this case
+        // the memory address of this CallData instance.
+        service_->RequestGetPropertyStream(&ctx_, &request_, &responder_, cq_, cq_, this);
+      } else if (status_ == CallStatus::PROCESS) {
+        // Spawn a new CallData instance to serve new clients while we process
+        // the one for this CallData. The instance will deallocate itself as
+        // part of its FINISH state.
+        new StreamCallData(service_, cq_);
+
+        if (request_.has_count() && request_.count() >= 0) {
+          expected_message_count_ = request_.count();
+        }
+
+#if !defined(NDEBUG)
+        std::cout << "Request received " << request_.name() << ", sending " << expected_message_count_ << " messages\n";
+#endif
+        SendMessage();
+      } else if (status_ == CallStatus::PROCESSING) {
+        SendMessage();
+      } else {
+        GPR_ASSERT(status_ == CallStatus::FINISH);
+        // Once in the FINISH state, deallocate ourselves (CallData).
+        delete this;
+      }
+    }
+
+   private:
+    void SendMessage() {
+      if (replies_sent_ >= expected_message_count_) {
+        // And we are done! Let the gRPC runtime know we've finished, using the
+        // memory address of this instance as the uniquely identifying tag for
+        // the event.
+#if !defined(NDEBUG)
+        std::cout << " Finished\n";
+#endif
+
+        status_ = CallStatus::FINISH;
+        responder_.Finish(Status::OK, tag(*this));
+        return;
+      }
+      reply_.set_string_v("Property name " + request_.name() + " #" + std::to_string(replies_sent_++));
+
+#if !defined(NDEBUG)
+      std::cout << "Sending reply " << reply_.string_v() << '\n';
+#endif
+
+      status_ = CallStatus::PROCESSING;
+      responder_.Write(reply_, tag(*this));
+    }
+    // The means of communication with the gRPC runtime for an asynchronous
+    // server.
+    Storage::AsyncService *service_;
+    // The producer-consumer queue where for asynchronous server notifications.
+    ServerCompletionQueue *cq_;
+    // Context for the rpc, allowing to tweak aspects of it such as the use
+    // of compression, authentication, as well as to send metadata back to the
+    // client.
+    ServerContext ctx_;
+
+    // What we get from the client.
+    PropertyRequest request_;
+    // What we send back to the client.
+    PropertyValue reply_;
+
+    // The means to get back to the client.
+    ServerAsyncWriter<PropertyValue> responder_;
+
+    // Let's implement a tiny state machine with the following states.
+    enum class CallStatus { CREATE, PROCESS, PROCESSING, FINISH };
+    CallStatus status_;  // The current serving state.
+    int64_t replies_sent_{0};
+    static constexpr auto kDefaultReply = 1;
+    int64_t expected_message_count_{kDefaultReply};
   };
 
   std::unique_ptr<ServerCompletionQueue> cq_;
@@ -156,7 +264,7 @@ int main(int argc, char **argv) {
 
   // Spawn reader thread that loops indefinitely
   std::vector<std::jthread> threads{};
-  for (auto i = 0; i < 4; ++i) {
+  for (auto i = 0; i < 8; ++i) {
     threads.emplace_back(&MemgraphServerImpl::HandleRpcs, &server);
   }
 
