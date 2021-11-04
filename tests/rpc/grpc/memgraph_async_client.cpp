@@ -69,9 +69,8 @@ class StorageClient {
     // an instance to store in "call" and starts the RPC
     // Because we are using the asynchronous API, we need to hold on to
     // the "call" instance in order to get updates on the ongoing RPC.
-    call->response_reader = stub_->AsyncGetPropertyStream(&call->context, request, &cq_, ResponseHandler::tag(*call));
-
-    // Finish will be called from GetPropertyStreamCall::HandleResponse
+    call->response_reader = stub_->PrepareAsyncGetPropertyStream(&call->context, request, &cq_);
+    call->response_reader->StartCall(ResponseHandler::tag(*call));
   }
 
   // Loop while listening for completed responses.
