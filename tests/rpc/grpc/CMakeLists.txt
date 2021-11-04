@@ -62,7 +62,8 @@ target_link_libraries(memgraph_grpc_proto
 foreach(_target
   memgraph_server
   memgraph_async_client
-  memgraph_async_server)
+  memgraph_async_server
+  memgraph_callback_server)
   add_executable(${_target} "${_target}.cpp")
   target_link_libraries(${_target}
     memgraph_grpc_proto

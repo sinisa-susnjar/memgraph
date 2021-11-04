@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
 
   for (int i = 0; i < 10; i++) {
     std::string name("world " + std::to_string(i));
-    storage.GetProperties(name, 2);  // The actual RPC call!
+    storage.GetProperties(name, (i + 1) * 2);  // The actual RPC call!
   }
 
   std::cout << "Press control-c to quit" << std::endl << std::endl;
