@@ -20,6 +20,12 @@
 #include "memgraph.grpc.pb.h"
 #include "memgraph.pb.h"
 
+#define PRINT 0
+
+#ifndef NDEBUG
+#define PRINT 0
+#endif
+
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
@@ -32,12 +38,12 @@ using memgraph::Storage;
 // Logic and data behind the server's behavior.
 class MemgraphServiceImpl final : public Storage::Service {
   Status GetProperty(ServerContext *context, const PropertyRequest *request, PropertyValue *reply) override {
-#if !defined(NDEBUG)
+#if PRINT
     std::cout << "Request received " << request->name() << '\n';
 #endif
     reply->set_string_v("Property name " + request->name());
 
-#if !defined(NDEBUG)
+#if PRINT
     std::cout << "Sending reply " << reply->string_v() << '\n';
 #endif
     return Status::OK;
@@ -46,14 +52,14 @@ class MemgraphServiceImpl final : public Storage::Service {
                            ServerWriter<PropertyValue> *writer) override {
     constexpr auto kDefaultMessageCount = 1;
     const auto expected_message_count = request->has_count() ? request->count() : kDefaultMessageCount;
-#if !defined(NDEBUG)
+#if PRINT
     std::cout << "Request received " << request->name() << ", sending " << expected_message_count << " messages\n";
 #endif
     PropertyValue reply;
     for (auto i{0}; i < expected_message_count; ++i) {
       reply.set_string_v("Property name " + request->name() + " #" + std::to_string(i));
 
-#if !defined(NDEBUG)
+#if PRINT
       std::cout << "Sending reply " << reply.string_v() << '\n';
 #endif
       writer->Write(reply);

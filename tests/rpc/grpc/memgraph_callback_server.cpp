@@ -18,6 +18,7 @@
 #include <thread>
 
 #include <grpc/grpc.h>
+#include <grpcpp/impl/codegen/call_op_set.h>
 #include <grpcpp/security/server_credentials.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
@@ -25,6 +26,12 @@
 
 #include "memgraph.grpc.pb.h"
 #include "memgraph.pb.h"
+
+#define PRINT 0
+
+#ifndef NDEBUG
+#define PRINT 0
+#endif
 
 using grpc::CallbackServerContext;
 using grpc::Server;
@@ -41,13 +48,13 @@ class StorageImpl final : public Storage::CallbackService {
  public:
   grpc::ServerUnaryReactor *GetProperty(CallbackServerContext *context, const PropertyRequest *request,
                                         PropertyValue *reply) override {
-#if !defined(NDEBUG)
+#if PRINT
     std::cout << "Request received " << request->name() << '\n';
 #endif
     // The actual processing.
     reply->set_string_v("Property name " + request->name());
 
-#if !defined(NDEBUG)
+#if PRINT
     std::cout << "Sending reply " << reply->string_v() << '\n';
 #endif
     auto *reactor = context->DefaultReactor();
@@ -69,7 +76,7 @@ class StorageImpl final : public Storage::CallbackService {
      private:
       void NextWrite() {
         if (sent_message_count_ == expected_message_count_) {
-#if !defined(NDEBUG)
+#if PRINT
           std::cout << " Finished\n";
 #endif
           // Didn't write anything, all is done.
@@ -78,7 +85,7 @@ class StorageImpl final : public Storage::CallbackService {
         }
         reply_.set_string_v("Property name " + name_ + " #" + std::to_string(sent_message_count_++));
 
-#if !defined(NDEBUG)
+#if PRINT
         std::cout << "Sending reply " << reply_.string_v() << '\n';
 #endif
         StartWrite(&reply_);

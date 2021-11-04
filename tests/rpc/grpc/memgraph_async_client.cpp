@@ -9,6 +9,8 @@
 // by the Apache License, Version 2.0, included in the file
 // licenses/APL.txt.
 
+#include <atomic>
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -18,6 +20,12 @@
 #include <grpcpp/grpcpp.h>
 
 #include "memgraph.grpc.pb.h"
+
+#define PRINT 0
+
+#ifndef NDEBUG
+#define PRINT 0
+#endif
 
 using grpc::Channel;
 using grpc::ClientAsyncReader;
@@ -41,6 +49,7 @@ class StorageClient {
 
     // Call object to store rpc data
     auto *call = new GetPropertyCall;
+    call->received_message_count_ = &received_message_count_;
 
     // stub_->AsyncGetProperty() creates an RPC object, returning
     // an instance to store in "call" and starts the RPC
@@ -63,7 +72,8 @@ class StorageClient {
     request.set_count(count);
 
     // Call object to store rpc data
-    auto *call = new GetPropertyStreamCall;
+    auto *call = new GetPropertyStreamCall();
+    call->received_message_count_ = &received_message_count_;
 
     // stub_->AsyncGetProperty() creates an RPC object, returning
     // an instance to store in "call" and starts the RPC
@@ -78,13 +88,14 @@ class StorageClient {
   void AsyncCompleteRpc() {
     void *got_tag;
     bool ok = false;
-
     // Block until the next result is available in the completion queue "cq".
     while (cq_.Next(&got_tag, &ok)) {
       // The tag in this example is the memory location of the callback
       ResponseHandler::detag(got_tag).HandleResponse(ok);
     }
   }
+
+  uint64_t ReceivedMessageCount() const { return received_message_count_.load(); }
 
  private:
   class ResponseHandler {
@@ -107,6 +118,7 @@ class StorageClient {
 
     // Container for the data we expect from the server.
     PropertyValue reply;
+    std::atomic<uint64_t> *received_message_count_;
   };
 
   struct GetPropertyCall : public ResponseHandler, public CommonCall {
@@ -118,9 +130,10 @@ class StorageClient {
       GPR_ASSERT(ok);
 
       if (status.ok()) {
-#if !defined(NDEBUG)
+#if PRINT
         std::cout << "Client received: " << reply.string_v() << std::endl;
 #endif
+        ++*received_message_count_;
       } else {
         std::cout << "RPC failed" << std::endl;
       }
@@ -147,10 +160,11 @@ class StorageClient {
           break;
         case CallStatus::PROCESS:
           if (ok) {
-#if !defined(NDEBUG)
+#if PRINT
             std::cout << "Client received: " << reply.string_v() << std::endl;
 #endif
             response_reader->Read(&reply, (void *)this);
+            ++*received_message_count_;
           } else {
             call_status = CallStatus::FINISH;
             response_reader->Finish(&status, (void *)this);
@@ -158,7 +172,7 @@ class StorageClient {
           break;
         case CallStatus::FINISH:
           if (status.ok()) {
-#if !defined(NDEBUG)
+#if PRINT
             std::cout << "Server Response Completed: " << this << " CallData: " << this << std::endl;
 #endif
           } else {
@@ -171,6 +185,7 @@ class StorageClient {
    private:
     enum class CallStatus { CREATE, PROCESS, FINISH };
     CallStatus call_status{CallStatus::CREATE};
+    const std::string magic{"HERE HERE"};
   };
 
   // Out of the passed in Channel comes the stub, stored here, our view of the
@@ -180,6 +195,7 @@ class StorageClient {
   // The producer-consumer queue we use to communicate asynchronously with the
   // gRPC runtime.
   CompletionQueue cq_;
+  std::atomic<uint64_t> received_message_count_{0};
 };
 
 int main(int argc, char **argv) {
@@ -191,16 +207,28 @@ int main(int argc, char **argv) {
 
   // Spawn reader thread that loops indefinitely
   std::vector<std::jthread> threads{};
-  for (auto i = 0; i < 4; ++i) {
+  for (auto i = 0; i < 8; ++i) {
     threads.emplace_back(&StorageClient::AsyncCompleteRpc, &storage);
   }
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  for (int i = 0; i < 10; i++) {
+  uint64_t expected_message_count_ = 0;
+
+  const auto start = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i < 5000; i++) {
     std::string name("world " + std::to_string(i));
-    storage.GetProperties(name, (i + 1) * 2);  // The actual RPC call!
+    uint64_t message_count = 200;
+    storage.GetProperties(name, message_count);  // The actual RPC call!
+    expected_message_count_ += message_count;
   }
 
+  while (storage.ReceivedMessageCount() != expected_message_count_) {
+    // std::cout << storage.ReceivedMessageCount() << "  " << expected_message_count_ << '\n';
+    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+  }
+
+  const auto end = std::chrono::high_resolution_clock::now();
+  std::cout << "Done: in " << std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count()
+            << " seconds\n";
   std::cout << "Press control-c to quit" << std::endl << std::endl;
 
   return 0;

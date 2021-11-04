@@ -19,6 +19,12 @@
 
 #include "memgraph.grpc.pb.h"
 
+#define PRINT 0
+
+#ifndef NDEBUG
+#define PRINT 0
+#endif
+
 using grpc::Server;
 using grpc::ServerAsyncResponseWriter;
 using grpc::ServerAsyncWriter;
@@ -34,13 +40,18 @@ using memgraph::Storage;
 class MemgraphServerImpl final {
  public:
   ~MemgraphServerImpl() {
+    for (auto &thread : threads_) {
+      thread.join();
+    }
     server_->Shutdown();
     // Always shutdown the completion queue after the server.
-    cq_->Shutdown();
+    for (auto &cq : cqs_) {
+      cq->Shutdown();
+    }
   }
 
   // There is no shutdown handling in this code.
-  void Start() {
+  void Start(const int number_of_threads) {
     std::string server_address("0.0.0.0:50051");
 
     ServerBuilder builder;
@@ -51,29 +62,36 @@ class MemgraphServerImpl final {
     builder.RegisterService(&service_);
     // Get hold of the completion queue used for the asynchronous communication
     // with the gRPC runtime.
-    cq_ = builder.AddCompletionQueue();
+    for (int i = 0; i < number_of_threads; ++i) {
+      cqs_.push_back(builder.AddCompletionQueue());
+    }
     // Finally assemble the server.
     server_ = builder.BuildAndStart();
+
+    // Spawn reader thread that loops indefinitely
+    for (auto i = 0; i < number_of_threads; ++i) {
+      threads_.emplace_back(&MemgraphServerImpl::HandleRpcs, this, i);
+    }
     std::cout << "Server listening on " << server_address << std::endl;
   }
 
   // This can be run in multiple threads if needed.
-  void HandleRpcs() {
+  void HandleRpcs(int cq_index) {
     // Spawn a new CallData instance to serve new clients.
-    new SingleCallData(&service_, cq_.get());
-    new StreamCallData(&service_, cq_.get());
+    auto &cq = cqs_[cq_index];
+    new SingleCallData(&service_, cq.get());
+    new StreamCallData(&service_, cq.get());
     void *tag;  // uniquely identifies a request.
     bool ok;
-    while (true) {
+    while (cq->Next(&tag, &ok)) {
       // Block waiting to read the next event from the completion queue. The
       // event is uniquely identified by its tag, which in this case is the
       // memory address of a CallData instance.
       // The return value of Next should always be checked. This return value
       // tells us whether there is any kind of event or cq_ is shutting down.
-      GPR_ASSERT(cq_->Next(&tag, &ok));
-      GPR_ASSERT(ok);
       CallData::detag(tag).Proceed();
     }
+    std::cout << "Exit |" << cq_index << "|\n";
   }
 
  private:
@@ -113,13 +131,13 @@ class MemgraphServerImpl final {
         // part of its FINISH state.
         new SingleCallData(service_, cq_);
 
-#if !defined(NDEBUG)
+#if PRINT
         std::cout << "Request received " << request_.name() << '\n';
 #endif
         // The actual processing.
         reply_.set_string_v("Property name " + request_.name());
 
-#if !defined(NDEBUG)
+#if PRINT
         std::cout << "Sending reply " << reply_.string_v() << '\n';
 #endif
 
@@ -191,7 +209,7 @@ class MemgraphServerImpl final {
           expected_message_count_ = request_.count();
         }
 
-#if !defined(NDEBUG)
+#if PRINT
         std::cout << "Request received " << request_.name() << ", sending " << expected_message_count_ << " messages\n";
 #endif
         SendMessage();
@@ -210,7 +228,7 @@ class MemgraphServerImpl final {
         // And we are done! Let the gRPC runtime know we've finished, using the
         // memory address of this instance as the uniquely identifying tag for
         // the event.
-#if !defined(NDEBUG)
+#if PRINT
         std::cout << " Finished\n";
 #endif
 
@@ -220,7 +238,7 @@ class MemgraphServerImpl final {
       }
       reply_.set_string_v("Property name " + request_.name() + " #" + std::to_string(replies_sent_++));
 
-#if !defined(NDEBUG)
+#if PRINT
       std::cout << "Sending reply " << reply_.string_v() << '\n';
 #endif
 
@@ -253,20 +271,15 @@ class MemgraphServerImpl final {
     int64_t expected_message_count_{kDefaultReply};
   };
 
-  std::unique_ptr<ServerCompletionQueue> cq_;
+  std::vector<std::unique_ptr<ServerCompletionQueue>> cqs_;
   Storage::AsyncService service_;
   std::unique_ptr<Server> server_;
+  std::vector<std::jthread> threads_;
 };
 
 int main(int argc, char **argv) {
   MemgraphServerImpl server;
-  server.Start();
-
-  // Spawn reader thread that loops indefinitely
-  std::vector<std::jthread> threads{};
-  for (auto i = 0; i < 8; ++i) {
-    threads.emplace_back(&MemgraphServerImpl::HandleRpcs, &server);
-  }
+  server.Start(8);
 
   return 0;
 }
