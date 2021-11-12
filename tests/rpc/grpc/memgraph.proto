@@ -61,7 +61,7 @@ message TemporalData {
 }
 
 message List {
-  repeated PropertyValue property_values = 1;
+  repeated PropertyValue list = 1;
 }
 
 message Map {
