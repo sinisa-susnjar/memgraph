@@ -48,6 +48,7 @@ class MemgraphServiceImpl final : public Storage::Service {
 #endif
     return Status::OK;
   }
+
   Status GetPropertyStream(ServerContext *context, const PropertyRequest *request,
                            ServerWriter<PropertyValue> *writer) override {
     constexpr auto kDefaultMessageCount = 1;
