@@ -33,6 +33,7 @@ using grpc::ServerCompletionQueue;
 using grpc::ServerContext;
 using grpc::Status;
 using grpc::WriteOptions;
+using memgraph::List;
 using memgraph::PropertyRequest;
 using memgraph::PropertyValue;
 using memgraph::Storage;
@@ -81,6 +82,7 @@ class MemgraphServerImpl final {
     auto &cq = cqs_[cq_index];
     new SingleCallData(&service_, cq.get());
     new StreamCallData(&service_, cq.get());
+    new StreamCallData2(&service_, cq.get());
     void *tag;  // uniquely identifies a request.
     bool ok;
     while (cq->Next(&tag, &ok)) {
@@ -203,7 +205,7 @@ class MemgraphServerImpl final {
         // Spawn a new CallData instance to serve new clients while we process
         // the one for this CallData. The instance will deallocate itself as
         // part of its FINISH state.
-        new StreamCallData(service_, cq_);
+        new StreamCallData2(service_, cq_);
 
         if (request_.has_count() && request_.count() >= 0) {
           expected_message_count_ = request_.count();
@@ -267,6 +269,93 @@ class MemgraphServerImpl final {
     enum class CallStatus { CREATE, PROCESS, PROCESSING, FINISH };
     CallStatus status_;  // The current serving state.
     int64_t replies_sent_{0};
+    static constexpr auto kDefaultReply = 1;
+    int64_t expected_message_count_{kDefaultReply};
+  };
+
+  class StreamCallData2 : public CallData {
+   public:
+    // Take in the "service" instance (in this case representing an asynchronous
+    // server) and the completion queue "cq" used for asynchronous communication
+    // with the gRPC runtime.
+    StreamCallData2(Storage::AsyncService *service, ServerCompletionQueue *cq)
+        : service_(service), cq_(cq), responder_(&ctx_), status_(CallStatus::CREATE) {
+      // Invoke the serving logic right away.
+      Proceed();
+    }
+
+    void Proceed() override {
+      if (status_ == CallStatus::CREATE) {
+        // Make this instance progress to the PROCESS state.
+        status_ = CallStatus::PROCESS;
+
+        // As part of the initial CREATE state, we *request* that the system
+        // start processing SayHello requests. In this request, "this" acts are
+        // the tag uniquely identifying the request (so that different CallData
+        // instances can serve different requests concurrently), in this case
+        // the memory address of this CallData instance.
+        service_->RequestGetPropertyStream2(&ctx_, &request_, &responder_, cq_, cq_, this);
+      } else if (status_ == CallStatus::PROCESS) {
+        // Spawn a new CallData instance to serve new clients while we process
+        // the one for this CallData. The instance will deallocate itself as
+        // part of its FINISH state.
+        new StreamCallData(service_, cq_);
+
+        if (request_.has_count() && request_.count() >= 0) {
+          expected_message_count_ = request_.count();
+        }
+        SendMessages();
+      } else {
+        GPR_ASSERT(status_ == CallStatus::FINISH);
+        // Once in the FINISH state, deallocate ourselves (CallData).
+        delete this;
+      }
+    }
+
+   private:
+    void SendMessages() {
+#if PRINT
+      std::cout << "Request received " << request->name() << ", sending " << expected_message_count_ << " messages\n";
+#endif
+      for (auto i{0}; i < expected_message_count_; ++i) {
+        reply_.add_list()->set_string_v("Property name " + request_.name() + " #" + std::to_string(i));
+      }
+
+      // And we are done! Let the gRPC runtime know we've finished, using the
+      // memory address of this instance as the uniquely identifying tag for
+      // the event.
+
+#if PRINT
+      std::cout << "Sending reply\n";
+#endif
+
+      status_ = CallStatus::FINISH;
+      responder_.Finish(reply_, Status::OK, tag(*this));
+#if PRINT
+      std::cout << " Finished\n";
+#endif
+    }
+    // The means of communication with the gRPC runtime for an asynchronous
+    // server.
+    Storage::AsyncService *service_;
+    // The producer-consumer queue where for asynchronous server notifications.
+    ServerCompletionQueue *cq_;
+    // Context for the rpc, allowing to tweak aspects of it such as the use
+    // of compression, authentication, as well as to send metadata back to the
+    // client.
+    ServerContext ctx_;
+
+    // What we get from the client.
+    PropertyRequest request_;
+    // What we send back to the client.
+    List reply_;
+
+    // The means to get back to the client.
+    ServerAsyncResponseWriter<List> responder_;
+
+    // Let's implement a tiny state machine with the following states.
+    enum class CallStatus { CREATE, PROCESS, FINISH };
+    CallStatus status_;  // The current serving state.
     static constexpr auto kDefaultReply = 1;
     int64_t expected_message_count_{kDefaultReply};
   };

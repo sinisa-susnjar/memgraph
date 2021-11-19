@@ -39,6 +39,8 @@ using grpc::ServerBuilder;
 using grpc::ServerUnaryReactor;
 using grpc::ServerWriteReactor;
 using grpc::Status;
+using SyncServerOption = grpc::ServerBuilder::SyncServerOption;
+using memgraph::List;
 using memgraph::PropertyRequest;
 using memgraph::PropertyValue;
 using memgraph::Storage;
@@ -97,6 +99,25 @@ class StorageImpl final : public Storage::CallbackService {
     };
     return new PropertyStreamer(*request);
   }
+
+  grpc::ServerUnaryReactor *GetPropertyStream2(CallbackServerContext *context, const PropertyRequest *request,
+                                               List *reply) override {
+#if PRINT
+    std::cout << "Request received " << request->name() << '\n';
+#endif
+    const auto expected_message_count = request->has_count() ? request->count() : 1;
+    const auto &name = request->name();
+    for (auto i{0}; i < expected_message_count; ++i) {
+      reply->add_list()->set_string_v("Property name " + name);
+    }
+
+#if PRINT
+    std::cout << "Sending reply " << reply->string_v() << '\n';
+#endif
+    auto *reactor = context->DefaultReactor();
+    reactor->Finish(Status::OK);
+    return reactor;
+  }
 };
 
 void RunServer(const std::string &db_path) {}
@@ -106,8 +127,10 @@ int main() {
   StorageImpl service;
 
   ServerBuilder builder;
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  builder.RegisterService(&service);
+  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials())
+      .RegisterService(&service)
+      .SetSyncServerOption(SyncServerOption::NUM_CQS, 4)
+      .SetSyncServerOption(SyncServerOption::MAX_POLLERS, 8);
   std::unique_ptr<Server> server(builder.BuildAndStart());
   std::cout << "Server listening on " << server_address << std::endl;
   server->Wait();

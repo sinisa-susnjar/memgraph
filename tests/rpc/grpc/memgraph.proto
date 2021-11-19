@@ -28,6 +28,7 @@ service Greeter {
 
 service Storage {
   rpc GetPropertyStream(PropertyRequest) returns (stream PropertyValue);
+  rpc GetPropertyStream2(PropertyRequest) returns (List);
   rpc GetProperty(PropertyRequest) returns (PropertyValue);
 }
 
@@ -80,3 +81,4 @@ message PropertyValue {
     TemporalData temporal_v = 8;
   }
 }
+

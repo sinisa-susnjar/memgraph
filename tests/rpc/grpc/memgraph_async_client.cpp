@@ -33,6 +33,7 @@ using grpc::ClientAsyncResponseReader;
 using grpc::ClientContext;
 using grpc::CompletionQueue;
 using grpc::Status;
+using memgraph::List;
 using memgraph::PropertyRequest;
 using memgraph::PropertyValue;
 using memgraph::Storage;
@@ -83,6 +84,25 @@ class StorageClient {
     call->response_reader->StartCall(ResponseHandler::tag(*call));
   }
 
+  void GetProperties2(const std::string &name, const int64_t count) {
+    // Data we are sending to the server.
+    PropertyRequest request;
+    request.set_name(name);
+    request.set_count(count);
+
+    // Call object to store rpc data
+    auto *call = new GetPropertyStreamCall2();
+    call->received_message_count_ = &received_message_count_;
+
+    // stub_->AsyncGetProperty() creates an RPC object, returning
+    // an instance to store in "call" and starts the RPC
+    // Because we are using the asynchronous API, we need to hold on to
+    // the "call" instance in order to get updates on the ongoing RPC.
+    call->response_reader = stub_->AsyncGetPropertyStream2(&call->context, request, &cq_);
+
+    call->response_reader->Finish(&call->reply, &call->status, ResponseHandler::tag(*call));
+  }
+
   // Loop while listening for completed responses.
   // Prints out the response from the server.
   void AsyncCompleteRpc() {
@@ -117,13 +137,13 @@ class StorageClient {
     Status status;
 
     // Container for the data we expect from the server.
-    PropertyValue reply;
     std::atomic<uint64_t> *received_message_count_;
   };
 
   struct GetPropertyCall : public ResponseHandler, public CommonCall {
    public:
     std::unique_ptr<ClientAsyncResponseReader<PropertyValue>> response_reader;
+    PropertyValue reply;
     void HandleResponse(bool ok) override {
       // Verify that the request was completed successfully. Note that "ok"
       // corresponds solely to the request for updates introduced by Finish().
@@ -146,6 +166,7 @@ class StorageClient {
   class GetPropertyStreamCall : public ResponseHandler, public CommonCall {
    public:
     std::unique_ptr<ClientAsyncReader<PropertyValue>> response_reader;
+    PropertyValue reply;
 
     void HandleResponse(bool ok) override {
       switch (call_status) {
@@ -185,7 +206,29 @@ class StorageClient {
    private:
     enum class CallStatus { CREATE, PROCESS, FINISH };
     CallStatus call_status{CallStatus::CREATE};
-    const std::string magic{"HERE HERE"};
+  };
+
+  struct GetPropertyStreamCall2 : public ResponseHandler, public CommonCall {
+   public:
+    std::unique_ptr<ClientAsyncResponseReader<List>> response_reader;
+    List reply;
+    void HandleResponse(bool ok) override {
+      // Verify that the request was completed successfully. Note that "ok"
+      // corresponds solely to the request for updates introduced by Finish().
+      GPR_ASSERT(ok);
+
+      if (status.ok()) {
+#if PRINT
+        std::cout << "Client received: " << reply.string_v() << std::endl;
+#endif
+        received_message_count_->fetch_add(reply.list_size());
+      } else {
+        std::cout << "RPC failed" << std::endl;
+      }
+
+      // Once we're complete, deallocate the call object.
+      delete this;
+    }
   };
 
   // Out of the passed in Channel comes the stub, stored here, our view of the
@@ -214,10 +257,10 @@ int main(int argc, char **argv) {
   uint64_t expected_message_count_ = 0;
 
   const auto start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < 5000; i++) {
+  for (int i = 0; i < 10000; i++) {
     std::string name("world " + std::to_string(i));
     uint64_t message_count = 200;
-    storage.GetProperties(name, message_count);  // The actual RPC call!
+    storage.GetProperties2(name, message_count);  // The actual RPC call!
     expected_message_count_ += message_count;
   }
 

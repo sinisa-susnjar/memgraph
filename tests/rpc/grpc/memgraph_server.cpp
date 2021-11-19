@@ -31,6 +31,7 @@ using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::ServerWriter;
 using grpc::Status;
+using memgraph::List;
 using memgraph::PropertyRequest;
 using memgraph::PropertyValue;
 using memgraph::Storage;
@@ -65,6 +66,23 @@ class MemgraphServiceImpl final : public Storage::Service {
 #endif
       writer->Write(reply);
     }
+    return Status::OK;
+  }
+
+  Status GetPropertyStream2(ServerContext *context, const PropertyRequest *request, List *reply) override {
+    constexpr auto kDefaultMessageCount = 1;
+    const auto expected_message_count = request->has_count() ? request->count() : kDefaultMessageCount;
+#if PRINT
+    std::cout << "Request received " << request->name() << '\n';
+#endif
+
+    for (auto i{0}; i < expected_message_count; ++i) {
+      reply->add_list()->set_string_v("Property name " + request->name() + " #" + std::to_string(i));
+    }
+
+#if PRINT
+    std::cout << "Sending reply " << reply->string_v() << '\n';
+#endif
     return Status::OK;
   }
 };
