@@ -205,7 +205,7 @@ class MemgraphServerImpl final {
         // Spawn a new CallData instance to serve new clients while we process
         // the one for this CallData. The instance will deallocate itself as
         // part of its FINISH state.
-        new StreamCallData2(service_, cq_);
+        new StreamCallData(service_, cq_);
 
         if (request_.has_count() && request_.count() >= 0) {
           expected_message_count_ = request_.count();
@@ -299,7 +299,7 @@ class MemgraphServerImpl final {
         // Spawn a new CallData instance to serve new clients while we process
         // the one for this CallData. The instance will deallocate itself as
         // part of its FINISH state.
-        new StreamCallData(service_, cq_);
+        new StreamCallData2(service_, cq_);
 
         if (request_.has_count() && request_.count() >= 0) {
           expected_message_count_ = request_.count();
