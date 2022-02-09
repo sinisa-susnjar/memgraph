@@ -159,7 +159,10 @@ clause : cypherMatch
        | cypherReturn
        | callProcedure
        | loadCsv
+       | foreach
        ;
+
+foreach :  '(' variable IN expression '|' ( set | remove | create | merge | remove | cypherDelete | foreach )+ ')' ;
 
 streamQuery : checkStream
             | createStream

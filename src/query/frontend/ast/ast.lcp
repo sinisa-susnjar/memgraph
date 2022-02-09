@@ -1,4 +1,4 @@
-;; Copyright 2021 Memgraph Ltd.
+;; Copyright 2022 Memgraph Ltd.
 ;;
 ;; Use of this software is governed by the Business Source License
 ;; included in the file licenses/BSL.txt; by using this file, you agree to be bound by the terms of the Business Source
@@ -2607,6 +2607,44 @@ cpp<#
     SettingQuery() = default;
 
     DEFVISITABLE(QueryVisitor<void>);
+    cpp<#)
+  (:private
+    #>cpp
+    friend class AstStorage;
+    cpp<#)
+  (:serialize (:slk))
+  (:clone))
+
+(lcp:define-class foreach (clause)
+  ((variable "Identifier *" :initval "nullptr" :scope :public
+          :slk-save #'slk-save-ast-pointer
+          :slk-load (slk-load-ast-pointer "Identifier"))
+   (named_expression "NamedExpression *" :initval "nullptr" :scope :public
+          :slk-save #'slk-save-ast-pointer
+          :slk-load (slk-load-ast-pointer "Expression"))
+   (clauses "std::vector<Clause *>"
+             :scope :public
+             :slk-save #'slk-save-ast-vector
+             :slk-load (slk-load-ast-vector "Clause")))
+  (:public
+    #>cpp
+    Foreach() = default;
+
+    bool Accept(HierarchicalTreeVisitor &visitor) override {
+      if (visitor.PreVisit(*this)) {
+          variable_->Accept(visitor);
+          named_expression_->Accept(visitor);
+          for (auto &clause : clauses_) {
+            clause->Accept(visitor);
+          }
+       }
+      return visitor.PostVisit(*this);
+    }
+    cpp<#)
+  (:protected
+    #>cpp
+    Foreach(NamedExpression *expression, std::vector<Clause *> clauses)
+        : named_expression_(expression), clauses_(clauses) {}
     cpp<#)
   (:private
     #>cpp
