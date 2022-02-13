@@ -1,4 +1,4 @@
-// Copyright 2021 Memgraph Ltd.
+// Copyright 2022 Memgraph Ltd.
 //
 // Use of this software is governed by the Business Source License
 // included in the file licenses/BSL.txt; by using this file, you agree to be bound by the terms of the Business Source
@@ -59,6 +59,8 @@ class SymbolGenerator : public HierarchicalTreeVisitor {
   bool PostVisit(Unwind &) override;
   bool PreVisit(Match &) override;
   bool PostVisit(Match &) override;
+  bool PreVisit(Foreach &) override;
+  bool PostVisit(Foreach &) override;
 
   // Expressions
   ReturnType Visit(Identifier &) override;
@@ -107,6 +109,7 @@ class SymbolGenerator : public HierarchicalTreeVisitor {
     bool in_order_by{false};
     bool in_where{false};
     bool in_match{false};
+    bool in_foreach{false};
     // True when visiting a pattern atom (node or edge) identifier, which can be
     // reused or created in the pattern itself.
     bool in_pattern_atom_identifier{false};

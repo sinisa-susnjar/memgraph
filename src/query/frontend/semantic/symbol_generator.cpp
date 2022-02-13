@@ -1,4 +1,4 @@
-// Copyright 2021 Memgraph Ltd.
+// Copyright 2022 Memgraph Ltd.
 //
 // Use of this software is governed by the Business Source License
 // included in the file licenses/BSL.txt; by using this file, you agree to be bound by the terms of the Business Source
@@ -261,6 +261,20 @@ bool SymbolGenerator::PostVisit(Match &) {
     ident->MapTo(scope_.symbols[ident->name_]);
   }
   scope_.identifiers_in_match.clear();
+  return true;
+}
+
+bool SymbolGenerator::PreVisit(Foreach &) {
+  scope_.in_foreach = true;
+  return true;
+}
+bool SymbolGenerator::PostVisit(Foreach &for_each) {
+  const auto &name = for_each.named_expression_->name_;
+  if (HasSymbol(name)) {
+    throw RedeclareVariableError(name);
+  }
+  for_each.named_expression_->MapTo(CreateSymbol(name, true));
+  scope_.in_foreach = false;
   return true;
 }
 
