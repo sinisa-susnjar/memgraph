@@ -46,7 +46,7 @@ namespace {
 template <typename TVisitor>
 std::optional<std::pair<query::Expression *, size_t>> VisitMemoryLimit(
     MemgraphCypher::MemoryLimitContext *memory_limit_ctx, TVisitor *visitor) {
-  MG_ASSERT(memory_limit_ctx);
+  MG_ASSERT(memory_limit_ctx, "huhu");
   if (memory_limit_ctx->UNLIMITED()) {
     return std::nullopt;
   }
@@ -56,7 +56,7 @@ std::optional<std::pair<query::Expression *, size_t>> VisitMemoryLimit(
   if (memory_limit_ctx->MB()) {
     memory_scale = 1024U * 1024U;
   } else {
-    MG_ASSERT(memory_limit_ctx->KB());
+    MG_ASSERT(memory_limit_ctx->KB(), "huhu");
     memory_scale = 1024U;
   }
 
@@ -125,7 +125,7 @@ antlrcpp::Any CypherMainVisitor::visitInfoQuery(MemgraphCypher::InfoQueryContext
 
 antlrcpp::Any CypherMainVisitor::visitConstraintQuery(MemgraphCypher::ConstraintQueryContext *ctx) {
   auto *constraint_query = storage_->Create<ConstraintQuery>();
-  MG_ASSERT(ctx->CREATE() || ctx->DROP());
+  MG_ASSERT(ctx->CREATE() || ctx->DROP(), "huhu");
   if (ctx->CREATE()) {
     constraint_query->action_type_ = ConstraintQuery::ActionType::CREATE;
   } else if (ctx->DROP()) {
@@ -138,7 +138,7 @@ antlrcpp::Any CypherMainVisitor::visitConstraintQuery(MemgraphCypher::Constraint
 
 antlrcpp::Any CypherMainVisitor::visitConstraint(MemgraphCypher::ConstraintContext *ctx) {
   Constraint constraint;
-  MG_ASSERT(ctx->EXISTS() || ctx->UNIQUE() || (ctx->NODE() && ctx->KEY()));
+  MG_ASSERT(ctx->EXISTS() || ctx->UNIQUE() || (ctx->NODE() && ctx->KEY()), "huhu");
   if (ctx->EXISTS()) {
     constraint.type = Constraint::Type::EXISTS;
   } else if (ctx->UNIQUE()) {
@@ -497,7 +497,7 @@ namespace {
 std::vector<std::string> TopicNamesFromSymbols(
     antlr4::tree::ParseTreeVisitor &visitor,
     const std::vector<MemgraphCypher::SymbolicNameWithDotsAndMinusContext *> &topic_name_symbols) {
-  MG_ASSERT(!topic_name_symbols.empty());
+  MG_ASSERT(!topic_name_symbols.empty(), "huhu");
   std::vector<std::string> topic_names;
   topic_names.reserve(topic_name_symbols.size());
   std::transform(topic_name_symbols.begin(), topic_name_symbols.end(), std::back_inserter(topic_names),
@@ -579,7 +579,7 @@ void MapCommonStreamConfigs(auto &memory, StreamQuery &stream_query) {
 }  // namespace
 
 antlrcpp::Any CypherMainVisitor::visitConfigKeyValuePair(MemgraphCypher::ConfigKeyValuePairContext *ctx) {
-  MG_ASSERT(ctx->literal().size() == 2);
+  MG_ASSERT(ctx->literal().size() == 2, "huhu");
   return std::pair{ctx->literal(0)->accept(this).as<Expression *>(), ctx->literal(1)->accept(this).as<Expression *>()};
 }
 
@@ -626,7 +626,7 @@ void ThrowIfExists(const auto &map, const EnumUint8 auto &enum_key) {
 
 void GetTopicNames(auto &destination, MemgraphCypher::TopicNamesContext *topic_names_ctx,
                    antlr4::tree::ParseTreeVisitor &visitor) {
-  MG_ASSERT(topic_names_ctx != nullptr);
+  MG_ASSERT(topic_names_ctx != nullptr, "huhu");
   if (auto *symbolic_topic_names_ctx = topic_names_ctx->symbolicTopicNames()) {
     destination = TopicNamesFromSymbols(visitor, symbolic_topic_names_ctx->symbolicNameWithDotsAndMinus());
   } else {
@@ -672,7 +672,7 @@ antlrcpp::Any CypherMainVisitor::visitKafkaCreateStreamConfig(MemgraphCypher::Ka
     return {};
   }
 
-  MG_ASSERT(ctx->BOOTSTRAP_SERVERS());
+  MG_ASSERT(ctx->BOOTSTRAP_SERVERS(), "huhu");
   ThrowIfExists(memory_, KafkaConfigKey::BOOTSTRAP_SERVERS);
   if (!ctx->bootstrapServers->StringLiteral()) {
     throw SemanticException("Bootstrap servers should be a string!");
@@ -726,7 +726,7 @@ antlrcpp::Any CypherMainVisitor::visitPulsarCreateStreamConfig(MemgraphCypher::P
     return {};
   }
 
-  MG_ASSERT(ctx->SERVICE_URL());
+  MG_ASSERT(ctx->SERVICE_URL(), "huhu");
   ThrowIfExists(memory_, PulsarConfigKey::SERVICE_URL);
   if (!ctx->serviceUrl->StringLiteral()) {
     throw SemanticException("Service URL must be a string!");
@@ -754,7 +754,7 @@ antlrcpp::Any CypherMainVisitor::visitCommonCreateStreamConfig(MemgraphCypher::C
     return {};
   }
 
-  MG_ASSERT(ctx->BATCH_SIZE());
+  MG_ASSERT(ctx->BATCH_SIZE(), "huhu");
   ThrowIfExists(memory_, CommonStreamConfigKey::BATCH_SIZE);
   if (!ctx->batchSize->numberLiteral() || !ctx->batchSize->numberLiteral()->integerLiteral()) {
     throw SemanticException("Batch size must be an integer literal!");
@@ -843,10 +843,10 @@ antlrcpp::Any CypherMainVisitor::visitSetSetting(MemgraphCypher::SetSettingConte
   }
 
   setting_query->setting_name_ = ctx->settingName()->accept(this);
-  MG_ASSERT(setting_query->setting_name_);
+  MG_ASSERT(setting_query->setting_name_, "huhu");
 
   setting_query->setting_value_ = ctx->settingValue()->accept(this);
-  MG_ASSERT(setting_query->setting_value_);
+  MG_ASSERT(setting_query->setting_value_, "huhu");
   return setting_query;
 }
 
@@ -859,7 +859,7 @@ antlrcpp::Any CypherMainVisitor::visitShowSetting(MemgraphCypher::ShowSettingCon
   }
 
   setting_query->setting_name_ = ctx->settingName()->accept(this);
-  MG_ASSERT(setting_query->setting_name_);
+  MG_ASSERT(setting_query->setting_name_, "huhu");
 
   return setting_query;
 }
@@ -1067,7 +1067,7 @@ antlrcpp::Any CypherMainVisitor::visitCallProcedure(MemgraphCypher::CallProcedur
   query_info_.is_cacheable = false;
 
   auto *call_proc = storage_->Create<CallProcedure>();
-  MG_ASSERT(!ctx->procedureName()->symbolicName().empty());
+  MG_ASSERT(!ctx->procedureName()->symbolicName().empty(), "huhu");
   call_proc->procedure_name_ = JoinSymbolicNames(this, ctx->procedureName()->symbolicName());
   call_proc->arguments_.reserve(ctx->expression().size());
   for (auto *expr : ctx->expression()) {
@@ -1110,7 +1110,7 @@ antlrcpp::Any CypherMainVisitor::visitCallProcedure(MemgraphCypher::CallProcedur
     call_proc->result_fields_.reserve(yield_ctx->procedureResult().size());
     call_proc->result_identifiers_.reserve(yield_ctx->procedureResult().size());
     for (auto *result : yield_ctx->procedureResult()) {
-      MG_ASSERT(result->variable().size() == 1 || result->variable().size() == 2);
+      MG_ASSERT(result->variable().size() == 1 || result->variable().size() == 2, "huhu");
       call_proc->result_fields_.push_back(result->variable()[0]->accept(this).as<std::string>());
       std::string result_alias;
       if (result->variable().size() == 2) {
@@ -1402,7 +1402,7 @@ antlrcpp::Any CypherMainVisitor::visitReturnItems(MemgraphCypher::ReturnItemsCon
 antlrcpp::Any CypherMainVisitor::visitReturnItem(MemgraphCypher::ReturnItemContext *ctx) {
   auto *named_expr = storage_->Create<NamedExpression>();
   named_expr->expression_ = ctx->expression()->accept(this);
-  MG_ASSERT(named_expr->expression_);
+  MG_ASSERT(named_expr->expression_, "huhu");
   if (ctx->variable()) {
     named_expr->name_ = std::string(ctx->variable()->accept(this).as<std::string>());
     users_identifiers.insert(named_expr->name_);
@@ -1464,7 +1464,7 @@ antlrcpp::Any CypherMainVisitor::visitProperties(MemgraphCypher::PropertiesConte
     return ctx->mapLiteral()->accept(this);
   }
   // If child is not mapLiteral that means child is params.
-  MG_ASSERT(ctx->parameter());
+  MG_ASSERT(ctx->parameter(), "huhu");
   return ctx->parameter()->accept(this);
 }
 
@@ -1668,7 +1668,7 @@ antlrcpp::Any CypherMainVisitor::visitRelationshipPattern(MemgraphCypher::Relati
         edge->properties_ = properties[0]->accept(this).as<std::unordered_map<PropertyIx, Expression *>>();
         break;
       }
-      MG_ASSERT(properties[0]->parameter());
+      MG_ASSERT(properties[0]->parameter(), "huhu");
       edge->properties_ = properties[0]->accept(this).as<ParameterLookup *>();
       break;
     }

@@ -126,17 +126,15 @@ std::optional<Enum> StringToEnum(const auto &value, const auto &mappings) {
 }  // namespace
 
 // Bolt server flags.
+// SINI_TODO: VALIDATED / HIDDEN
 DEFINE_string(bolt_address, "0.0.0.0", "IP address on which the Bolt server should listen.");
-DEFINE_VALIDATED_int32(bolt_port, 7687, "Port on which the Bolt server should listen.",
-                       FLAG_IN_RANGE(0, std::numeric_limits<uint16_t>::max()));
-DEFINE_VALIDATED_int32(bolt_num_workers, std::max(std::thread::hardware_concurrency(), 1U),
+DEFINE_int32(bolt_port, 7687, "Port on which the Bolt server should listen.");
+DEFINE_int32(bolt_num_workers, std::max(std::thread::hardware_concurrency(), 1U),
                        "Number of workers used by the Bolt server. By default, this will be the "
-                       "number of processing units available on the machine.",
-                       FLAG_IN_RANGE(1, INT32_MAX));
-DEFINE_VALIDATED_int32(bolt_session_inactivity_timeout, 1800,
+                       "number of processing units available on the machine.");
+DEFINE_int32(bolt_session_inactivity_timeout, 1800,
                        "Time in seconds after which inactive Bolt sessions will be "
-                       "closed.",
-                       FLAG_IN_RANGE(1, INT32_MAX));
+                       "closed.");
 DEFINE_string(bolt_cert_file, "", "Certificate file which should be used for the Bolt server.");
 DEFINE_string(bolt_key_file, "", "Key file which should be used for the Bolt server.");
 DEFINE_string(bolt_server_name_for_init, "",
@@ -147,7 +145,8 @@ DEFINE_string(bolt_server_name_for_init, "",
 // NOTE: The `data_directory` flag must be the same here and in
 // `mg_import_csv`. If you change it, make sure to change it there as well.
 DEFINE_string(data_directory, "mg_data", "Path to directory in which to save all permanent data.");
-DEFINE_HIDDEN_string(log_link_basename, "", "Basename used for symlink creation to the last log file.");
+// SINI_TODO DEFINE_HIDDEN_string(log_link_basename, "", "Basename used for symlink creation to the last log file.");
+DEFINE_string(log_link_basename, "", "Basename used for symlink creation to the last log file.");
 DEFINE_uint64(memory_warning_threshold, 1024,
               "Memory warning threshold, in MB. If Memgraph detects there is "
               "less available RAM it will log a warning. Set to 0 to "
@@ -157,27 +156,24 @@ DEFINE_uint64(memory_warning_threshold, 1024,
 DEFINE_bool(allow_load_csv, true, "Controls whether LOAD CSV clause is allowed in queries.");
 
 // Storage flags.
-DEFINE_VALIDATED_uint64(storage_gc_cycle_sec, 30, "Storage garbage collector interval (in seconds).",
-                        FLAG_IN_RANGE(1, 24 * 3600));
+// SINI_TODO DEFINE_VALIDATED_uint64(storage_gc_cycle_sec, 30, "Storage garbage collector interval (in seconds).",
+DEFINE_uint64(storage_gc_cycle_sec, 30, "Storage garbage collector interval (in seconds).");
 // NOTE: The `storage_properties_on_edges` flag must be the same here and in
 // `mg_import_csv`. If you change it, make sure to change it there as well.
 DEFINE_bool(storage_properties_on_edges, false, "Controls whether edges have properties.");
 DEFINE_bool(storage_recover_on_startup, false, "Controls whether the storage recovers persisted data on startup.");
-DEFINE_VALIDATED_uint64(storage_snapshot_interval_sec, 0,
+DEFINE_uint64(storage_snapshot_interval_sec, 0,
                         "Storage snapshot creation interval (in seconds). Set "
-                        "to 0 to disable periodic snapshot creation.",
-                        FLAG_IN_RANGE(0, 7 * 24 * 3600));
+                        "to 0 to disable periodic snapshot creation.");
 DEFINE_bool(storage_wal_enabled, false,
             "Controls whether the storage uses write-ahead-logging. To enable "
             "WAL periodic snapshots must be enabled.");
-DEFINE_VALIDATED_uint64(storage_snapshot_retention_count, 3, "The number of snapshots that should always be kept.",
-                        FLAG_IN_RANGE(1, 1000000));
-DEFINE_VALIDATED_uint64(storage_wal_file_size_kib, storage::Config::Durability().wal_file_size_kibibytes,
-                        "Minimum file size of each WAL file.", FLAG_IN_RANGE(1, 1000 * 1024));
-DEFINE_VALIDATED_uint64(storage_wal_file_flush_every_n_tx, storage::Config::Durability().wal_file_flush_every_n_tx,
+DEFINE_uint64(storage_snapshot_retention_count, 3, "The number of snapshots that should always be kept.");
+DEFINE_uint64(storage_wal_file_size_kib, storage::Config::Durability().wal_file_size_kibibytes,
+                        "Minimum file size of each WAL file.");
+DEFINE_uint64(storage_wal_file_flush_every_n_tx, storage::Config::Durability().wal_file_flush_every_n_tx,
                         "Issue a 'fsync' call after this amount of transactions are written to the "
-                        "WAL file. Set to 1 for fully synchronous operation.",
-                        FLAG_IN_RANGE(1, 1000000));
+                        "WAL file. Set to 1 for fully synchronous operation.");
 DEFINE_bool(storage_snapshot_on_exit, false, "Controls whether the storage creates another snapshot on exit.");
 
 DEFINE_bool(telemetry_enabled, false,
@@ -205,11 +201,9 @@ DEFINE_string(pulsar_service_url, "", "Default URL used while connecting to Puls
 // Audit logging flags.
 #ifdef MG_ENTERPRISE
 DEFINE_bool(audit_enabled, false, "Set to true to enable audit logging.");
-DEFINE_VALIDATED_int32(audit_buffer_size, audit::kBufferSizeDefault, "Maximum number of items in the audit log buffer.",
-                       FLAG_IN_RANGE(1, INT32_MAX));
-DEFINE_VALIDATED_int32(audit_buffer_flush_interval_ms, audit::kBufferFlushIntervalMillisDefault,
-                       "Interval (in milliseconds) used for flushing the audit log buffer.",
-                       FLAG_IN_RANGE(10, INT32_MAX));
+DEFINE_int32(audit_buffer_size, audit::kBufferSizeDefault, "Maximum number of items in the audit log buffer.");
+DEFINE_int32(audit_buffer_flush_interval_ms, audit::kBufferFlushIntervalMillisDefault,
+                       "Interval (in milliseconds) used for flushing the audit log buffer.");
 #endif
 
 // Query flags.

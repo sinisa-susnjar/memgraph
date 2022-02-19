@@ -44,8 +44,9 @@ inline void AssertFailed(const char *file_name, int line_num, const char *expr, 
   std::terminate();
 }
 
-#define GET_MESSAGE(...) \
-  BOOST_PP_IF(BOOST_PP_EQUAL(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), 0), "", fmt::format(__VA_ARGS__))
+// SINI_TODO
+#define GET_MESSAGE(fmt, ...) "" // fmt::format(fmt __VA_ARGS__)
+//  BOOST_PP_IF(BOOST_PP_EQUAL(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), 0), "", fmt::format(__VA_ARGS__))
 
 #define MG_ASSERT(expr, ...) \
   [[likely]] !!(expr) ? (void)0 : ::logging::AssertFailed(__FILE__, __LINE__, #expr, GET_MESSAGE(__VA_ARGS__))

@@ -12,10 +12,11 @@
 #include "query/cypher_query_interpreter.hpp"
 
 // NOLINTNEXTLINE (cppcoreguidelines-avoid-non-const-global-variables)
-DEFINE_HIDDEN_bool(query_cost_planner, true, "Use the cost-estimating query planner.");
+// SINI_TODO DEFINE_HIDDEN_bool(query_cost_planner, true, "Use the cost-estimating query planner.");
+DEFINE_bool(query_cost_planner, true, "Use the cost-estimating query planner.");
 // NOLINTNEXTLINE (cppcoreguidelines-avoid-non-const-global-variables)
-DEFINE_VALIDATED_int32(query_plan_cache_ttl, 60, "Time to live for cached query plans, in seconds.",
-                       FLAG_IN_RANGE(0, std::numeric_limits<int32_t>::max()));
+// SINI_TODO DEFINE_VALIDATED_int32(query_plan_cache_ttl, 60, "Time to live for cached query plans, in seconds.", FLAG_IN_RANGE(0, std::numeric_limits<int32_t>::max()));
+DEFINE_int32(query_plan_cache_ttl, 60, "Time to live for cached query plans, in seconds.");
 
 namespace query {
 CachedPlan::CachedPlan(std::unique_ptr<LogicalPlan> plan) : plan_(std::move(plan)) {}

@@ -11,6 +11,7 @@ endif()
 find_package(Boost 1.71 REQUIRED)
 find_package(BZip2 1.0.6 REQUIRED)
 find_package(Threads REQUIRED)
+# find_package(fmt 8.0.1 REQUIRED)
 set(GFLAGS_NOTHREADS OFF)
 find_package(gflags REQUIRED)
 find_package(Jemalloc REQUIRED)
@@ -188,12 +189,11 @@ add_external_project(mgconsole
 
 add_custom_target(mgconsole DEPENDS mgconsole-proj)
 
-# Setup fmtlib
-set(FMT_HEADER_ONLY ON)
-FetchContent_Declare(fmtlib
+# Setup fmt
+# set(SPDLOG_FMT_EXTERNAL ON)
+FetchContent_Declare(fmt
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/fmtlib)
-
-FetchContent_MakeAvailable(fmtlib)
+FetchContent_MakeAvailable(fmt)
 
 # Setup spdlog
 set(SPDLOG_FMT_EXTERNAL ON)

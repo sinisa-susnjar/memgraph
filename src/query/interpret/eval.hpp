@@ -463,7 +463,7 @@ class ExpressionEvaluator : public ExpressionVisitor<TypedValue> {
         arguments[i] = function.arguments_[i]->Accept(*this);
       }
       auto res = function.function_(arguments, function.arguments_.size(), function_ctx);
-      MG_ASSERT(res.GetMemoryResource() == ctx_->memory);
+      MG_ASSERT(res.GetMemoryResource() == ctx_->memory, "huhu");
       return res;
     } else {
       TypedValue::TVector arguments(ctx_->memory);
@@ -472,7 +472,7 @@ class ExpressionEvaluator : public ExpressionVisitor<TypedValue> {
         arguments.emplace_back(argument->Accept(*this));
       }
       auto res = function.function_(arguments.data(), arguments.size(), function_ctx);
-      MG_ASSERT(res.GetMemoryResource() == ctx_->memory);
+      MG_ASSERT(res.GetMemoryResource() == ctx_->memory, "huhu");
       return res;
     }
   }

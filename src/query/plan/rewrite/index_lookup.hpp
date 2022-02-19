@@ -456,9 +456,9 @@ class IndexLookupRewriter final : public HierarchicalLogicalOperatorVisitor {
   bool DefaultPreVisit() override { throw utils::NotYetImplemented("optimizing index lookup"); }
 
   void SetOnParent(const std::shared_ptr<LogicalOperator> &input) {
-    MG_ASSERT(input);
+    MG_ASSERT(input, "huhu");
     if (prev_ops_.empty()) {
-      MG_ASSERT(!new_root_);
+      MG_ASSERT(!new_root_, "huhu");
       new_root_ = input;
       return;
     }

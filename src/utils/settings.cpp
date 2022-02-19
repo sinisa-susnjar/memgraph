@@ -31,7 +31,7 @@ void Settings::Finalize() {
 
 void Settings::RegisterSetting(std::string name, const std::string &default_value, OnChangeCallback callback) {
   std::lock_guard settings_guard{settings_lock_};
-  MG_ASSERT(storage_);
+  MG_ASSERT(storage_, "huhu");
 
   if (const auto maybe_value = storage_->Get(name); maybe_value) {
     SPDLOG_INFO("The setting with name {} already exists!", name);
@@ -45,7 +45,7 @@ void Settings::RegisterSetting(std::string name, const std::string &default_valu
 
 std::optional<std::string> Settings::GetValue(const std::string &setting_name) const {
   std::shared_lock settings_guard{settings_lock_};
-  MG_ASSERT(storage_);
+  MG_ASSERT(storage_, "huhu");
   auto maybe_value = storage_->Get(setting_name);
   return maybe_value;
 }
@@ -53,7 +53,7 @@ std::optional<std::string> Settings::GetValue(const std::string &setting_name) c
 bool Settings::SetValue(const std::string &setting_name, const std::string &new_value) {
   const auto settings_change_callback = std::invoke([&, this]() -> std::optional<OnChangeCallback> {
     std::lock_guard settings_guard{settings_lock_};
-    MG_ASSERT(storage_);
+    MG_ASSERT(storage_, "huhu");
 
     if (const auto maybe_value = storage_->Get(setting_name); !maybe_value) {
       return std::nullopt;
@@ -77,7 +77,7 @@ bool Settings::SetValue(const std::string &setting_name, const std::string &new_
 std::vector<std::pair<std::string, std::string>> Settings::AllSettings() const {
   std::shared_lock settings_guard{settings_lock_};
 
-  MG_ASSERT(storage_);
+  MG_ASSERT(storage_, "huhu");
 
   std::vector<std::pair<std::string, std::string>> settings;
   settings.reserve(storage_->Size());
