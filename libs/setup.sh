@@ -216,7 +216,7 @@ repo_clone_try_double "${primary_urls[mgconsole]}" "${secondary_urls[mgconsole]}
 spdlog_tag="v1.9.2" # (2021-08-12)
 repo_clone_try_double "${primary_urls[spdlog]}" "${secondary_urls[spdlog]}" "spdlog" "$spdlog_tag" true
 
-fmtlib_tag="8.1.1"
+fmtlib_tag="8.0.1"
 repo_clone_try_double "${primary_urls[fmtlib]}" "${secondary_urls[fmtlib]}" "fmtlib" "$fmtlib_tag" true
 
 # librdkafka
