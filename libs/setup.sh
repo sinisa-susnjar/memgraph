@@ -115,6 +115,7 @@ declare -A primary_urls=(
   ["mgclient"]="http://$local_cache_host/git/mgclient.git"
   ["pymgclient"]="http://$local_cache_host/git/pymgclient.git"
   ["mgconsole"]="http://$local_cache_host/git/mgconsole.git"
+  ["fmtlib"]="http://$local_cache_host/git/fmtlib"
   ["spdlog"]="http://$local_cache_host/git/spdlog"
   ["nlohmann"]="http://$local_cache_host/file/nlohmann/json/4f8fba14066156b73f1189a2b8bd568bde5284c5/single_include/nlohmann/json.hpp"
   ["neo4j"]="http://$local_cache_host/file/neo4j-community-3.2.3-unix.tar.gz"
@@ -140,6 +141,7 @@ declare -A secondary_urls=(
   ["mgclient"]="https://github.com/memgraph/mgclient.git"
   ["pymgclient"]="https://github.com/memgraph/pymgclient.git"
   ["mgconsole"]="http://github.com/memgraph/mgconsole.git"
+  ["fmtlib"]="https://github.com/fmtlib/fmt"
   ["spdlog"]="https://github.com/gabime/spdlog"
   ["nlohmann"]="https://raw.githubusercontent.com/nlohmann/json/4f8fba14066156b73f1189a2b8bd568bde5284c5/single_include/nlohmann/json.hpp"
   ["neo4j"]="https://s3-eu-west-1.amazonaws.com/deps.memgraph.io/neo4j-community-3.2.3-unix.tar.gz"
@@ -213,6 +215,9 @@ repo_clone_try_double "${primary_urls[mgconsole]}" "${secondary_urls[mgconsole]}
 
 spdlog_tag="v1.9.2" # (2021-08-12)
 repo_clone_try_double "${primary_urls[spdlog]}" "${secondary_urls[spdlog]}" "spdlog" "$spdlog_tag" true
+
+fmtlib_tag="8.0.1" # (2021-07-03)
+repo_clone_try_double "${primary_urls[fmtlib]}" "${secondary_urls[fmtlib]}" "fmtlib" "$fmtlib_tag" true
 
 # librdkafka
 librdkafka_tag="v1.7.0" # (2021-05-06)
