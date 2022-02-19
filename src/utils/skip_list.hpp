@@ -1187,7 +1187,7 @@ class SkipList final {
       }
     }
 
-    MG_ASSERT(unique_count > 0);
+    MG_ASSERT(unique_count > 0, "huhu");
 
     return nodes_traversed / unique_count;
   }

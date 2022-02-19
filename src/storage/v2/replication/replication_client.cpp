@@ -160,7 +160,7 @@ void Storage::ReplicationClient::StartTransactionReplication(const uint64_t curr
       HandleRpcFailure();
       return;
     case replication::ReplicaState::READY:
-      MG_ASSERT(!replica_stream_);
+      MG_ASSERT(!replica_stream_, "huhu");
       try {
         replica_stream_.emplace(ReplicaStream{this, storage_->last_commit_timestamp_.load(), current_wal_seq_num});
         replica_state_.store(replication::ReplicaState::REPLICATING);
@@ -390,7 +390,7 @@ std::vector<Storage::ReplicationClient::RecoveryStep> Storage::ReplicationClient
   // inside the current WAL or the snapshot.
   if (wal_files->empty()) {
     if (current_wal_from_timestamp && replica_commit >= *current_wal_from_timestamp) {
-      MG_ASSERT(current_wal_seq_num);
+      MG_ASSERT(current_wal_seq_num, "huhu");
       recovery_steps.emplace_back(RecoveryCurrentWal{*current_wal_seq_num});
       return recovery_steps;
     }
@@ -405,7 +405,7 @@ std::vector<Storage::ReplicationClient::RecoveryStep> Storage::ReplicationClient
     // if there are no finalized WAL files, snapshot left the current WAL
     // as the WAL file containing a transaction before snapshot creation
     // so we can be sure that the current WAL is present
-    MG_ASSERT(current_wal_seq_num);
+    MG_ASSERT(current_wal_seq_num, "huhu");
     recovery_steps.emplace_back(RecoveryCurrentWal{*current_wal_seq_num});
     return recovery_steps;
   }
@@ -417,7 +417,7 @@ std::vector<Storage::ReplicationClient::RecoveryStep> Storage::ReplicationClient
   // if the last finalized WAL is before the replica commit
   // then we can recovery only from current WAL
   if (rwal_it->to_timestamp <= replica_commit) {
-    MG_ASSERT(current_wal_seq_num);
+    MG_ASSERT(current_wal_seq_num, "huhu");
     recovery_steps.emplace_back(RecoveryCurrentWal{*current_wal_seq_num});
     return recovery_steps;
   }
